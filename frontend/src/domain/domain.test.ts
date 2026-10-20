@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EventRow } from '@/api/types';
-import { chartKey, parseChartKey, pickDefaultChart } from './charts';
+import { chartKey, isPartialWindow, parseChartKey, pickDefaultChart } from './charts';
 import { eventMessage, eventTone } from './events';
 import { markerEvents, rankDomain, summarize, tierLines, timeTicks, withGaps } from './history';
 import { direction, isNoise, placesGained, tierOf } from './rank';
@@ -115,5 +115,15 @@ describe('events', () => {
     expect(eventTone(ev({ type: 'LEFT_CHART' }))).toBe('down');
     expect(eventTone(ev({ type: 'BIG_MOVE', previousRank: 4, currentRank: 19 }))).toBe('down');
     expect(eventTone(ev({ type: 'RISING_ENDED' }))).toBe('neutral');
+  });
+});
+
+describe('comparison window', () => {
+  it('flags a comparison that covers less than the selected period', () => {
+    const asOf = '2026-10-20T08:00:00Z';
+    expect(isPartialWindow(asOf, '2026-10-19T12:00:00Z', '24h')).toBe(true);   // chart younger than 24 hours
+    expect(isPartialWindow(asOf, '2026-10-19T08:00:00Z', '24h')).toBe(false);
+    expect(isPartialWindow(asOf, '2026-10-20T04:00:00Z', '1h')).toBe(false);   // previous reading is older than 1 hour
+    expect(isPartialWindow(asOf, null, '7d')).toBe(false);
   });
 });

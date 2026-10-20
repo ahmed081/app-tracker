@@ -3,6 +3,8 @@ import { expectSaga } from './testing/expectSaga';
 import reducer, { remoteActions, resourceKey, type RemoteEntry } from './remote/remoteSlice';
 import { FRESH_MS, needsFetch } from './remote/remoteSaga';
 import prefsReducer, { loadPreferences, preferencesActions, STORAGE_KEY } from './preferences/preferencesSlice';
+import { createStore } from '@/app/store';
+import { manageActions } from './manage/manageSlice';
 
 describe('remote cache', () => {
   it('builds the same key whatever the parameter order', () => {
@@ -59,5 +61,40 @@ describe('preferences', () => {
   it('clamps the noise filter', () => {
     const s = prefsReducer(loadPreferences(), preferencesActions.minPlacesChanged(500));
     expect(s.minPlaces).toBe(50);
+  });
+});
+
+describe('saving settings', () => {
+  it('marks the affected data stale after a save, and asks for the admin key on 401', async () => {
+    const realFetch = globalThis.fetch;
+    const answers = [
+      { status: 200, body: [{ code: 'ph' }] },                         // GET countries
+      { status: 200, body: { code: 'ph', enabled: false } },           // PATCH country
+      { status: 200, body: [{ code: 'ph' }] },                         // GET countries again (stale)
+      { status: 401, body: { status: 401, detail: 'Missing or wrong X-Admin-Key' } },
+    ];
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method ?? 'GET'} ${url}`);
+      const a = answers.shift()!;
+      return new Response(JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    try {
+      const store = createStore();
+      const key = resourceKey('manageCountries', {});
+      store.dispatch(remoteActions.fetchRequested({ resource: 'manageCountries', params: {}, key }));
+      await new Promise((r) => setTimeout(r, 20));
+      store.dispatch(manageActions.mutationRequested({ op: 'updateCountry', id: 'country:ph', params: { code: 'ph', enabled: false } }));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(store.getState().manage.mutations['country:ph']?.status).toBe('success');
+      expect(calls).toEqual(['GET /api/manage/countries', 'PATCH /api/manage/countries/ph', 'GET /api/manage/countries']);
+
+      store.dispatch(manageActions.mutationRequested({ op: 'updateCountry', id: 'country:ph', params: { code: 'ph', enabled: true } }));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(store.getState().manage.mutations['country:ph']?.error?.status).toBe(401);
+      expect(store.getState().manage.adminKeyPrompt).toBe(true);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });

@@ -1,9 +1,12 @@
 // Development-only fake API: serves recorded responses from mock/fixtures in the
 // exact shapes of the backend, so the UI can be built and reviewed without it.
+// The Settings API (/api/manage) is an in-memory fake (mock-manage-api.ts).
 import type { Plugin } from 'vite';
+import type { IncomingMessage } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handleManage } from './mock-manage-api.ts';
 
 const ROOT = fileURLToPath(new URL('./fixtures', import.meta.url));
 const WINDOWS = ['1h', '24h', '7d', '30d'];
@@ -19,10 +22,12 @@ function nearestWindow(w: string | null): string {
   return w && WINDOWS.includes(w) ? w : w === '3m' || w === '1y' || w === 'all' ? '30d' : '24h';
 }
 
-function handle(url: URL): { status: number; body: unknown } {
+function handle(url: URL, method = 'GET', body: Json = {}): { status: number; body: unknown } {
   const p = url.pathname.replace(/\/+$/, '');
   const qs = url.searchParams;
   const notFound = (detail: string) => ({ status: 404, body: { status: 404, detail } });
+
+  if (p.startsWith('/api/manage/')) return handleManage(p, method, body, load('charts.json') as unknown as Json[]);
 
   if (p === '/api/charts') return { status: 200, body: load('charts.json') };
 
@@ -86,14 +91,31 @@ export function mockApi(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url?.startsWith('/api/')) return next();
-        const { status, body } = handle(new URL(req.url, 'http://localhost'));
-        // A little latency so loading states are visible during development.
-        setTimeout(() => {
-          res.statusCode = status;
-          res.setHeader('content-type', status === 200 ? 'application/json' : 'application/problem+json');
-          res.end(JSON.stringify(body));
-        }, 150);
+        const url = req.url;
+        void readBody(req).then((requestBody) => {
+          const { status, body } = handle(new URL(url, 'http://localhost'), req.method ?? 'GET', requestBody);
+          // A little latency so loading and saving states are visible during development.
+          setTimeout(() => {
+            res.statusCode = status;
+            res.setHeader('content-type', status < 300 ? 'application/json' : 'application/problem+json');
+            res.end(JSON.stringify(body));
+          }, 150);
+        });
       });
     },
   };
+}
+
+function readBody(req: IncomingMessage): Promise<Json> {
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', (chunk) => { raw += chunk; });
+    req.on('end', () => {
+      try {
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch {
+        resolve({});
+      }
+    });
+  });
 }

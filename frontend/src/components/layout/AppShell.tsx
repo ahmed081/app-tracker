@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-router';
-import { Moon, Search, Sun, SunMoon } from 'lucide-react';
+import { Moon, Search, Settings, Sun, SunMoon } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { preferencesActions, type Theme } from '@/features/preferences/preferencesSlice';
 import { useChartSelection } from '@/features/charts/useChartSelection';
@@ -61,6 +61,10 @@ export function AppShell() {
               lang={language === 'ar' ? 'en' : 'ar'} aria-label={t('settings.switchLanguage')}>
               {language === 'ar' ? 'English' : 'العربية'}
             </button>
+            <NavLink to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')}
+              className={({ isActive }) => cn('rounded-md p-2 hover:bg-surface-2 hover:text-ink', isActive ? 'text-felt' : 'text-ink-2')}>
+              <Settings aria-hidden className="size-4" />
+            </NavLink>
             <button type="button" onClick={() => dispatch(preferencesActions.themeChanged(NEXT_THEME[theme]))}
               className="rounded-md p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"
               aria-label={t('settings.theme', { theme: t(`settings.themeName.${theme}`) })} title={t(`settings.themeName.${theme}`)}>

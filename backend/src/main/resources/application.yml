@@ -5,6 +5,10 @@ server:
 spring:
   application:
     name: app-tracker-backend
+  config:
+    # Local settings (git-ignored) when started from the project root, e.g. by the IDE.
+    # From backend/, Spring already reads ./config/application.yml.
+    import: optional:file:./backend/config/application.yml
   datasource:
     # The application connects as the limited app_backend user.
     url: ${JDBC_URL:jdbc:postgresql://localhost:5432/apptracker}
@@ -63,9 +67,10 @@ apptracker:
     display-depth: 25
     tiers: [10, 5]
     big-move-places: 5
-    # Rising: over the last 24 readings (a day), at least 12 gains and 10 places net.
-    rising-window: 24
-    rising-min-gains: 12
+    # Rising: over the last 24 hours, at least half of the readings are gains and
+    # 10 places net. Hours, not readings, so it means the same at any interval.
+    rising-hours: 24
+    rising-gain-percent: 50
     rising-min-net-places: 10
     new-best-after-days: 7
     gap-factor: 3

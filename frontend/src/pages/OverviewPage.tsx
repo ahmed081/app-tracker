@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Crown } from 'lucide-react';
@@ -11,6 +12,8 @@ import { ChartToolbar } from '@/components/layout/ChartToolbar';
 import { AppLabel } from '@/components/app/AppLabel';
 import { EventList } from '@/components/app/EventList';
 import { Panel } from '@/components/ui/Panel';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { PartialWindowNote } from '@/components/app/PartialWindowNote';
 import { RankDelta } from '@/components/ui/RankDelta';
 import { RankTransition } from '@/components/ui/RankTransition';
 import { EmptyState, ErrorState, Skeleton, SkeletonRows } from '@/components/ui/States';
@@ -33,6 +36,10 @@ function Overview({ chart, charts }: { chart: Chart; charts: Chart[] }) {
   const headlines = useResource('headlines', { chartKey: chart.key, window });
   const events = useResource('chartEvents', { chartKey: chart.key, minImportance: 2, limit: 24 });
   const movers = useResource('movers', { chartKey: chart.key, window, minPlaces: 3 });
+  // The moves feed, or only the apps that entered the chart (at any rank) over the period.
+  const [feed, setFeed] = useState<'moves' | 'newApps'>('moves');
+  const newApps = useResource('movers', feed === 'newApps'
+    ? { chartKey: chart.key, window, minPlaces: 3, depth: 200, limit: 100 } : null);
 
   return (
     <div className="space-y-6">
@@ -49,11 +56,28 @@ function Overview({ chart, charts }: { chart: Chart; charts: Chart[] }) {
         : <HeadlineStrip data={headlines.data} chart={chart} />}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Panel title={t('overview.latestEvents')}
-          action={<Link to={`${chartPath(chart.key)}/movers`} className="text-[13px] font-medium text-felt hover:underline">{t('overview.allMovers')}</Link>}>
-          {events.isLoading ? <SkeletonRows rows={6} />
-            : events.error && !events.data ? <ErrorState error={events.error} onRetry={events.reload} />
-              : <EventList events={(events.data?.events ?? []).filter((e) => !e.type.startsWith('RISING_')).slice(0, 10)} />}
+        <Panel title={feed === 'moves' ? t('overview.latestEvents') : t('overview.newApps')}
+          description={feed === 'newApps' ? t('overview.newAppsHint', { window: t(`window.long.${window}`) }) : undefined}
+          action={(
+            <div className="flex flex-wrap items-center gap-3">
+              <SegmentedControl size="sm" label={t('overview.feed')} value={feed} onChange={setFeed}
+                options={[{ value: 'moves', label: t('overview.feedMoves') }, { value: 'newApps', label: t('overview.feedNewApps') }]} />
+              <Link to={`${chartPath(chart.key)}/movers`} className="text-[13px] font-medium text-felt hover:underline">{t('overview.allMovers')}</Link>
+            </div>
+          )}>
+          {feed === 'moves' ? (
+            events.isLoading ? <SkeletonRows rows={6} />
+              : events.error && !events.data ? <ErrorState error={events.error} onRetry={events.reload} />
+                : <EventList events={(events.data?.events ?? []).filter((e) => !e.type.startsWith('RISING_')).slice(0, 10)} />
+          ) : newApps.isLoading ? <SkeletonRows rows={6} />
+            : newApps.error && !newApps.data ? <ErrorState error={newApps.error} onRetry={newApps.reload} />
+              : !newApps.data?.windowAt ? <EmptyState>{t('state.notEnoughHistory')}</EmptyState>
+                : (
+                  <div className="space-y-2">
+                    <PartialWindowNote asOf={newApps.data.asOf} windowAt={newApps.data.windowAt} window={window} />
+                    <MoverList movers={newApps.data.newEntries} chartKey={chart.key} empty={t('overview.noNewApps')} />
+                  </div>
+                )}
         </Panel>
         <Panel title={t('overview.rising')} description={t('overview.risingHint')}>
           {movers.isLoading ? <SkeletonRows rows={4} />

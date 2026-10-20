@@ -3,6 +3,7 @@ package com.apptracker.config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.filter.ShallowEtagHeaderFilter;
@@ -28,14 +29,18 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOrigins(props.corsOrigins().toArray(String[]::new))
-                .allowedMethods("GET", "POST")
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE")
                 .exposedHeaders("ETag");
     }
 
-    /** /api/admin/** requires the X-Admin-Key header. */
+    /**
+     * /api/admin/** and /api/manage/** require the X-Admin-Key header when ADMIN_KEY
+     * is set. With no ADMIN_KEY they are open (the owner's choice until the server is public).
+     */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new AdminKeyInterceptor(props.adminKey())).addPathPatterns("/api/admin/**");
+        registry.addInterceptor(new AdminKeyInterceptor(props.adminKey()))
+                .addPathPatterns("/api/admin/**", "/api/manage/**");
     }
 
     /**
@@ -59,10 +64,8 @@ public class WebConfig implements WebMvcConfigurer {
         @Override
         public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
                 throws Exception {
-            if (key.length == 0) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin endpoints are disabled (no ADMIN_KEY set)");
-                return false;
-            }
+            if (key.length == 0) return true;
+            if (HttpMethod.OPTIONS.matches(request.getMethod())) return true;   // CORS preflight carries no headers
             String given = request.getHeader("X-Admin-Key");
             byte[] givenBytes = given == null ? new byte[0] : given.getBytes(StandardCharsets.UTF_8);
             if (!MessageDigest.isEqual(key, givenBytes)) {

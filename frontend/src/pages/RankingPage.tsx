@@ -8,6 +8,7 @@ import { useChartSelection } from '@/features/charts/useChartSelection';
 import { useResource } from '@/features/remote/useResource';
 import { useFormat } from '@/i18n/format';
 import { ChartToolbar } from '@/components/layout/ChartToolbar';
+import { PartialWindowNote } from '@/components/app/PartialWindowNote';
 import { AppLabel } from '@/components/app/AppLabel';
 import { BumpChart } from '@/components/charts/BumpChart';
 import { Sparkline } from '@/components/charts/Sparkline';
@@ -35,7 +36,8 @@ function Ranking({ chart, charts }: { chart: Chart; charts: Chart[] }) {
   const dispatch = useAppDispatch();
   const { window: timeWindow, minPlaces } = useAppSelector((s) => s.preferences);
   const [view, setView] = useState<'table' | 'bump'>('table');
-  const [limit, setLimit] = useState(25);
+  // Top 25, or every rank the chart has (category charts stop at about 100; the API allows 200).
+  const [limit, setLimit] = useState<25 | 200>(25);
   const ranking = useResource('ranking', { chartKey: chart.key, window: timeWindow, limit });
   const bump = useResource('bump', view === 'bump' ? { chartKey: chart.key, window: '7d', top: 8, stepMinutes: 180 } : null);
   const rows = ranking.data?.rows ?? [];
@@ -44,7 +46,7 @@ function Ranking({ chart, charts }: { chart: Chart; charts: Chart[] }) {
     <div className="space-y-6">
       <div className="space-y-4">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight text-ink">{t('ranking.title', { n: limit })}</h1>
+          <h1 className="text-[22px] font-semibold tracking-tight text-ink">{limit === 25 ? t('ranking.title', { n: 25 }) : t('ranking.titleAll')}</h1>
         </div>
         <ChartToolbar charts={charts} chart={chart} />
       </div>
@@ -66,6 +68,11 @@ function Ranking({ chart, charts }: { chart: Chart; charts: Chart[] }) {
         }
         bodyClassName={view === 'table' ? 'px-0 pb-2' : undefined}
       >
+        {view === 'table' && ranking.data && (
+          <div className="px-5 pb-2">
+            <PartialWindowNote asOf={ranking.data.asOf} windowAt={ranking.data.windowAt} window={timeWindow} />
+          </div>
+        )}
         {view === 'bump' ? (
           bump.isLoading ? <SkeletonRows rows={8} /> : bump.error && !bump.data ? <ErrorState error={bump.error} onRetry={bump.reload} />
             : (bump.data?.series.length ? <BumpChart series={bump.data.series} /> : <EmptyState>{t('state.noData')}</EmptyState>)
@@ -75,7 +82,7 @@ function Ranking({ chart, charts }: { chart: Chart; charts: Chart[] }) {
               : <RankingTable rows={rows} chartKey={chart.key} minPlaces={minPlaces} windowLabel={t(`window.short.${timeWindow}`)} />}
         {view === 'table' && rows.length > 0 && (
           <div className="flex justify-center px-5 pt-3">
-            <button type="button" onClick={() => setLimit(limit === 25 ? 100 : 25)}
+            <button type="button" onClick={() => setLimit(limit === 25 ? 200 : 25)}
               className="rounded-lg border border-line px-4 py-1.5 text-[13px] font-medium text-ink-2 hover:border-line-strong hover:text-ink">
               {limit === 25 ? t('ranking.showMore') : t('ranking.showLess')}
             </button>

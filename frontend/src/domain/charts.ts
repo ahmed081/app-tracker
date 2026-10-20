@@ -32,6 +32,18 @@ export function chartKey(ref: ChartRef): string {
 
 export const chartPath = (key: string) => `/charts/${key}`;
 
+const WINDOW_MINUTES: Record<string, number> = { '1h': 60, '24h': 1440, '7d': 7 * 1440, '30d': 30 * 1440 };
+
+/**
+ * True when the backend compared with a reading later than the window start: the
+ * chart is younger than the window, so the comparison covers a shorter period.
+ */
+export function isPartialWindow(asOf: string | null, windowAt: string | null, window: string): boolean {
+  const minutes = WINDOW_MINUTES[window];
+  if (!asOf || !windowAt || minutes === undefined) return false;
+  return Date.parse(windowAt) > Date.parse(asOf) - minutes * 60_000;
+}
+
 /**
  * Chart to show when none is chosen: the remembered one if it still exists,
  * otherwise the first chart with data, otherwise the first chart.

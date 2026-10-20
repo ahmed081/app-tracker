@@ -64,6 +64,8 @@ node src/cli.js import feed.json ph:7006:TOP_FREE 2026-10-19T10:00:00Z   # impor
 
 ## Change what is collected
 
+The easiest way is the web app's **Settings** menu. The same changes in SQL, run as the admin (the collector's own user cannot change configuration). `db/activate-us.sql` is a complete example that tracks every Games category in the US.
+
 ```sql
 -- Track Card in another country
 INSERT INTO tracking_country (tracking_id, country_code)

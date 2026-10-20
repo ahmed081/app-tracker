@@ -76,8 +76,10 @@
   },
   "context": {
     "category": "Category",
+    "categorySearch": "Type to search",
     "chart": "Chart",
-    "country": "Country"
+    "country": "Country",
+    "noCategory": "No category matches"
   },
   "delta": {
     "new": "New",
@@ -163,6 +165,203 @@
     "steady": "Held at {{rank}} over {{period}}.",
     "title": "Ranking history"
   },
+  "manage": {
+    "title": "Settings",
+    "subtitle": "Choose what is collected and where, tune the event rules, and check that collection is healthy. Changes apply within a minute.",
+    "tab": {
+      "tracking": "Tracking",
+      "countries": "Countries",
+      "rules": "Event rules",
+      "status": "Status"
+    },
+    "action": {
+      "cancel": "Cancel",
+      "recompute": "Recompute all events",
+      "save": "Save",
+      "switchOff": "Switch off"
+    },
+    "adminKey": {
+      "title": "Admin key needed",
+      "body": "This server protects the Settings menu with an admin key.",
+      "label": "Admin key",
+      "hint": "Kept in this browser tab only, until you close it.",
+      "needed": "Enter the admin key to see and change the settings.",
+      "submit": "Continue"
+    },
+    "confirm": {
+      "stopCharts_one": "This stops collecting {{count}} chart. Its history is kept.",
+      "stopCharts_other": "This stops collecting {{count}} charts. Their history is kept."
+    },
+    "countries": {
+      "title": "Countries",
+      "hint": "App Store storefronts. A chart is collected in a country only while the country is on.",
+      "empty": "No countries yet. Add one to start.",
+      "activeCharts_one": "{{count}} chart collected",
+      "activeCharts_other": "{{count}} charts collected",
+      "wouldStart_one": "Off · switching on starts {{count}} chart",
+      "wouldStart_other": "Off · switching on starts {{count}} charts",
+      "off": "Off",
+      "collectIn": "Collect in {{country}}",
+      "confirmOff": "Switch off {{country}}?",
+      "addTitle": "Add a country",
+      "addHint": "Use the two-letter App Store country code, e.g. jp for Japan.",
+      "code": "Code",
+      "name": "Name",
+      "enableNow": "Switch on now",
+      "add": "Add country",
+      "added": "{{country}} added."
+    },
+    "tracking": {
+      "title": "What is tracked",
+      "hint": "One row per category and chart type. Switching a row off pauses it; nothing is deleted.",
+      "empty": "Nothing is tracked yet. Add a category on the right.",
+      "appliesWithin": "The collector reads these settings every minute: changes start or stop collection within a minute. Switching something off never deletes its history.",
+      "collects_one": "Collects {{count}} chart",
+      "collects_other": "Collects {{count}} charts",
+      "activeLabel": "Track {{name}}",
+      "interval": "How often",
+      "depth": "Ranks to collect",
+      "depthHint": "Up to 200. Category charts usually stop at about 100.",
+      "allCountries": "In every enabled country",
+      "countries": "Countries",
+      "countryOff": "This country is switched off",
+      "addTitle": "Track a category",
+      "addHint": "Pick a category, a chart and where to collect it.",
+      "genre": "Category",
+      "chartType": "Chart",
+      "preview_one": "Will collect {{count}} chart: {{countries}}.",
+      "preview_other": "Will collect {{count}} charts: {{countries}}.",
+      "add": "Start tracking",
+      "added": "Added. The first reading arrives within a few minutes."
+    },
+    "blocker": {
+      "inactive": "Paused.",
+      "genreOff": "The category is switched off.",
+      "genreGone": "Apple no longer lists this category.",
+      "noCountries": "No country selected.",
+      "countriesOff": "The selected countries are switched off."
+    },
+    "genres": {
+      "title": "Categories",
+      "hint": "Games categories and anything tracked. A category must be on for its charts to be collected.",
+      "filter": "Find a category",
+      "none": "No category matches.",
+      "gone": "No longer listed by Apple",
+      "wouldStart_one": "Switching on starts {{count}} chart",
+      "wouldStart_other": "Switching on starts {{count}} charts",
+      "wouldStop_one": "Collected in {{count}} chart",
+      "wouldStop_other": "Collected in {{count}} charts",
+      "enable": "Collect {{name}}",
+      "offSuffix": "{{name}} (switched off)"
+    },
+    "interval": {
+      "60": "Every hour",
+      "180": "Every 3 hours",
+      "360": "Every 6 hours",
+      "720": "Every 12 hours",
+      "1440": "Once a day",
+      "custom": "Every {{minutes}} minutes"
+    },
+    "rules": {
+      "defaults": "These are the default rules. Change them here; you can return to the defaults at any time.",
+      "custom": "Custom rules, saved {{when}}.",
+      "tiersTitle": "Tiers",
+      "tiersHint": "Lines that create “entered the Top N” and “left the Top N” events. App pages always show time in the Top 5 and Top 10.",
+      "movesTitle": "Moves",
+      "field": {
+        "bigMovePlaces": "Big move",
+        "risingHours": "Rising: period (hours)",
+        "risingGainPercent": "Rising: readings with a gain (%)",
+        "risingMinNetPlaces": "Rising: places gained",
+        "newBestAfterDays": "New best rank after"
+      },
+      "hint": {
+        "bigMovePlaces": "Places gained or lost in one reading to count as a big move.",
+        "risingHours": "How far back the rising rule looks. 24 = the last day, whatever the collection interval.",
+        "risingGainPercent": "Share of the readings in that period that must be a gain.",
+        "risingMinNetPlaces": "Minimum places gained overall across those readings.",
+        "newBestAfterDays": "Days after a chart's first reading before “best rank ever” events start."
+      },
+      "defaultsAre": "Defaults: tiers {{tiers}}; big move {{bigMove}} places; rising over {{hours}} hours with {{percent}}% of readings up and {{net}} places; new best after {{days}} days.",
+      "discard": "Discard changes",
+      "reset": "Back to the defaults",
+      "saved": "Rules saved",
+      "savedHint": "They apply to new readings from now on. Recompute to apply them to past events too."
+    },
+    "health": {
+      "ok": "Collection is running normally",
+      "warning": "Collection is running, with some incomplete readings",
+      "delayed": "Some charts are delayed",
+      "stopped": "Collection has stopped",
+      "idle": "Nothing to collect",
+      "waiting": "Waiting for the first readings",
+      "summary": "{{active}} active charts · {{delayed}} delayed · {{failing}} with a bad latest reading"
+    },
+    "status": {
+      "openWarning": "No admin key is set on the server: anyone who can reach the API can change these settings. Set ADMIN_KEY before the server is public.",
+      "collector": "Collector",
+      "targetCharts": "Charts to collect",
+      "lastAttempt": "Last attempt",
+      "lastValid": "Last valid reading",
+      "events": "Events",
+      "pending": "Readings waiting",
+      "lastProcessed": "Last processed",
+      "processNow": "Process now",
+      "processed_one": "{{count}} reading processed.",
+      "processed_other": "{{count}} readings processed.",
+      "metadata": "App details",
+      "metadataHint": "Ratings, versions and descriptions from the App Store, refreshed daily.",
+      "lookupNow": "Look up now",
+      "lookupDone": "{{apps}} apps checked, {{found}} found, {{failed}} failed calls.",
+      "rebuild": "Recompute events",
+      "rebuildHint": "Replays every reading with the current rules. Runs in the background.",
+      "rebuildProgress": "Recomputing: {{done}} of {{total}} charts",
+      "rebuildStarted": "Recomputing all events in the background. Follow the progress on the Status tab.",
+      "rebuildDone_one": "Last run finished {{when}}: {{count}} reading replayed.",
+      "rebuildDone_other": "Last run finished {{when}}: {{count}} readings replayed.",
+      "rebuildFailed": "Last run failed {{when}}: {{error}}",
+      "chartsTitle": "Charts",
+      "chartsHint": "Latest reading of every chart, problems first.",
+      "noCharts": "No charts yet. Track a category in a country to create them.",
+      "colStatus": "Latest reading",
+      "colLastReading": "When",
+      "colEntries": "Entries",
+      "colPending": "Waiting",
+      "inactive": "Not collected",
+      "delayed": "Delayed: last valid {{when}}",
+      "neverValid": "No valid reading yet"
+    },
+    "snapshot": {
+      "VALID": "Valid",
+      "INCOMPLETE": "Incomplete",
+      "FAILED": "Failed",
+      "NONE": "No reading yet"
+    },
+    "reason": {
+      "fetch_error": "Apple could not be reached ({{detail}})",
+      "empty_body": "Apple sent an empty response",
+      "unparsable_body": "Apple's response could not be read",
+      "no_feed": "Apple's response had no chart",
+      "zero_entries": "The chart was empty",
+      "invalid_app_id": "Invalid app ID at {{detail}}",
+      "duplicate_app_id": "Same app listed twice ({{detail}})",
+      "missing_name": "App without a name at {{detail}}",
+      "below_min_entries": "Only {{detail}} entries",
+      "other": "{{detail}}"
+    },
+    "error": {
+      "required": "Required.",
+      "countryCode": "Two letters, e.g. jp.",
+      "countryExists": "This country is already in the list.",
+      "name": "Between 1 and 80 characters.",
+      "trackingExists": "This category and chart are already tracked.",
+      "depth": "A whole number from 1 to 200.",
+      "interval": "Between 5 minutes and 24 hours.",
+      "tiersEmpty": "Pick at least one tier.",
+      "tiersChoice": "Pick tiers from the list.",
+      "range": "A whole number from {{min}} to {{max}}."
+    }
+  },
   "movers": {
     "empty": "Nothing to show for this period.",
     "title": "Movers",
@@ -175,12 +374,21 @@
       "tierCrossings": "Tier changes"
     },
     "hint": {
-      "climbers": "Apps that gained the most places over the last {{window}}",
-      "fallers": "Apps that lost the most places over the last {{window}}",
-      "newEntries": "Apps that entered the Top 25 over the last {{window}}",
-      "leftChart": "Apps that left the Top 25 over the last {{window}}",
+      "climbers": "Apps in {{scope}} that gained the most places over the last {{window}}",
+      "fallers": "Apps in {{scope}} that lost the most places over the last {{window}}",
+      "newEntries": "Apps that entered {{scope}} over the last {{window}}",
+      "leftChart": "Apps that left {{scope}} over the last {{window}}",
       "rising": "Apps climbing steadily over the last day, possibly heading for the top",
       "tierCrossings": "Apps that reached or lost #1, the Top 5 or the Top 10 over the last {{window}}"
+    },
+    "scope": {
+      "label": "Which apps",
+      "all": "Whole chart",
+      "top25": "Top 25",
+      "in": {
+        "all": "the chart",
+        "top25": "the Top 25"
+      }
     }
   },
   "nav": {
@@ -188,6 +396,7 @@
     "movers": "Movers",
     "overview": "Overview",
     "ranking": "Ranking",
+    "settings": "Settings",
     "skip": "Skip to content"
   },
   "notFound": {
@@ -199,10 +408,16 @@
     "allMovers": "See all movers",
     "biggestClimber": "Biggest climber",
     "biggestDrop": "Biggest drop",
+    "feed": "Show",
+    "feedMoves": "Important moves",
+    "feedNewApps": "New apps",
     "headlines": "What changed",
     "latestEvents": "Latest important moves",
+    "newApps": "New apps in the chart",
+    "newAppsHint": "Apps that entered the chart, at any rank, over the last {{window}}",
     "noClimber": "No app gained 3 places or more.",
     "noDrop": "No app lost 3 places or more.",
+    "noNewApps": "No app entered the chart in this period.",
     "noRising": "No app is climbing steadily right now.",
     "noTop10Entries": "No new apps in the Top 10.",
     "numberOne": "Number one",
@@ -255,13 +470,14 @@
     "noiseMin": "≥{{n}}",
     "noiseOff": "All moves",
     "showLess": "Show the Top 25",
-    "showMore": "Show the Top 100",
+    "showMore": "Show every rank",
     "tableHint": "Change since the previous reading, and over the last {{window}}",
     "tableTitle": "Current ranking",
     "title": "Top {{n}}",
     "view": "View",
     "viewBump": "Over time",
-    "viewTable": "Table"
+    "viewTable": "Table",
+    "titleAll": "Full chart"
   },
   "search": {
     "label": "Search apps",
@@ -304,6 +520,7 @@
       "24h": "24 hours",
       "7d": "7 days",
       "30d": "30 days"
-    }
+    },
+    "partial": "The chart has less than {{window}} of history: compared with its first reading ({{when}})."
   }
 }

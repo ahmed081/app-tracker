@@ -18,8 +18,10 @@ export const trackerApi = {
   headlines: (p: { chartKey: string; window: string }, signal?: AbortSignal) =>
     getJson<HeadlinesResponse>(`${chartPath(p.chartKey)}/headlines`, { window: p.window }, signal),
 
-  movers: (p: { chartKey: string; window: string; minPlaces: number }, signal?: AbortSignal) =>
-    getJson<MoversResponse>(`${chartPath(p.chartKey)}/movers`, { window: p.window, minPlaces: p.minPlaces }, signal),
+  /** depth: 25 = moves in and out of the Top 25; 200 = the whole chart. */
+  movers: (p: { chartKey: string; window: string; minPlaces: number; depth?: number; limit?: number }, signal?: AbortSignal) =>
+    getJson<MoversResponse>(`${chartPath(p.chartKey)}/movers`,
+      { window: p.window, minPlaces: p.minPlaces, depth: p.depth, limit: p.limit }, signal),
 
   chartEvents: (p: { chartKey: string; minImportance: number; since?: string; limit: number }, signal?: AbortSignal) =>
     getJson<EventsResponse>(`${chartPath(p.chartKey)}/events`,

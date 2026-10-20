@@ -22,6 +22,8 @@
   --up-soft: #e3f3e7;
   --down: #b42828;
   --down-soft: #f8e4e3;
+  --warn: #8a5a00;
+  --warn-soft: #fbf1dc;
   --series: #2a78d6;
   --series-soft: #2a78d61f;
   --focus: #2a78d6;
@@ -47,6 +49,8 @@
     --up-soft: #183022;
     --down: #f07878;
     --down-soft: #3a1f1f;
+    --warn: #e3ac45;
+    --warn-soft: #362c16;
     --series: #3987e5;
     --series-soft: #3987e526;
     --focus: #6aa8f0;
@@ -71,6 +75,8 @@
   --up-soft: #183022;
   --down: #f07878;
   --down-soft: #3a1f1f;
+  --warn: #e3ac45;
+  --warn-soft: #362c16;
   --series: #3987e5;
   --series-soft: #3987e526;
   --focus: #6aa8f0;
@@ -93,6 +99,8 @@
   --color-up-soft: var(--up-soft);
   --color-down: var(--down);
   --color-down-soft: var(--down-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --color-series: var(--series);
   --font-sans: "Readex Pro Variable", "Readex Pro", "Segoe UI", Tahoma, system-ui, sans-serif;
 }

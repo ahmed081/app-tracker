@@ -29,6 +29,7 @@ class EventEngineTest {
     /** Runs snapshots in order, carrying state like the real processor does. */
     private final class Chart {
         final EventEngine eng;
+        final int intervalMinutes;
         Map<Long, AppState> states = new HashMap<>();
         Map<Long, Integer> previous = Map.of();
         Instant previousSlot = null;
@@ -40,7 +41,12 @@ class EventEngineTest {
         }
 
         Chart(EventEngine eng) {
+            this(eng, 60);
+        }
+
+        Chart(EventEngine eng, int intervalMinutes) {
             this.eng = eng;
+            this.intervalMinutes = intervalMinutes;
         }
 
         Result next(Instant slot, Map<Long, Integer> current) {
@@ -49,7 +55,7 @@ class EventEngineTest {
             for (Long id : union(previous, current)) {
                 if (states.containsKey(id)) relevant.put(id, states.get(id));
             }
-            Result r = eng.process(new Input(++snapshotId, slot, 60, previousSlot, baselineSlot,
+            Result r = eng.process(new Input(++snapshotId, slot, intervalMinutes, previousSlot, baselineSlot,
                     previous, current, relevant));
             states.putAll(r.states());
             previous = current;
@@ -216,9 +222,24 @@ class EventEngineTest {
     }
 
     @Test
+    void steadyClimbOverADayIsRisingAtAFourHourInterval() {
+        // Every 4 hours: a day is 6 steps; 3 gains and 10 places are enough.
+        Chart chart = new Chart(engine, 240);
+        long app = 8;
+        int[] path = {70, 66, 66, 61, 58, 58, 55};
+        boolean rising = false;
+        for (int step = 0; step < path.length; step++) {
+            Map<Long, Integer> current = new LinkedHashMap<>();
+            current.put(app, path[step]);
+            rising = chart.next(T0.plus(Duration.ofHours(4L * step)), current).states().get(app).rising();
+        }
+        assertTrue(rising, "70 → 55 over a day, 4 of 6 steps up");
+    }
+
+    @Test
     void risingStartsAndEnds() {
-        // Short window to keep the test readable: 3 of 4 steps up and 6 places net.
-        Chart chart = new Chart(new EventEngine(new Config(25, List.of(10, 5), 5, 4, 3, 6, 7, 3, 8)));
+        // Short window to keep the test readable: 4 hourly steps, 3 of them up (75%), 6 places net.
+        Chart chart = new Chart(new EventEngine(new Config(25, List.of(10, 5), 5, 4, 75, 6, 7, 3, 8)));
         long app = 99;
         int[] path = {40, 35, 30, 28, 22, 23, 23, 23, 23};
         Result last = null;

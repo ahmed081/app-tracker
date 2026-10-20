@@ -16,8 +16,8 @@ public final class EngineModel {
      * @param displayDepth       chart size shown to users (Top 25); entering/leaving it = NEW_ENTRY/LEFT_CHART
      * @param tiers              tier lines that produce ENTERED_TOP_N / LEFT_TOP_N, e.g. [10, 5]
      * @param bigMovePlaces      a single-step move of at least this many places is a BIG_MOVE
-     * @param risingWindow       number of consecutive steps examined by the rising rule
-     * @param risingMinGains     steps that must be gains
+     * @param risingHours        period examined by the rising rule (turned into readings per chart interval)
+     * @param risingGainPercent  share of the readings in that period that must be gains
      * @param risingMinNetPlaces minimum net places gained over the window
      * @param newBestAfterDays   NEW_BEST is suppressed this long after the chart's first snapshot
      * @param gapFactor          a step longer than gapFactor x interval is flagged as a gap
@@ -27,15 +27,30 @@ public final class EngineModel {
             int displayDepth,
             List<Integer> tiers,
             int bigMovePlaces,
-            int risingWindow,
-            int risingMinGains,
+            int risingHours,
+            int risingGainPercent,
             int risingMinNetPlaces,
             int newBestAfterDays,
             int gapFactor,
             int recentRanksKept) {
 
         public static Config defaults() {
-            return new Config(25, List.of(10, 5), 5, 24, 12, 10, 7, 3, 25);
+            return new Config(25, List.of(10, 5), 5, 24, 50, 10, 7, 3, 25);
+        }
+
+        /**
+         * Readings-to-readings steps the rising rule examines at this interval: 24 hours
+         * is 24 steps when hourly, 6 when every 4 hours. At least 2, and no more than
+         * the ranks remembered per app allow.
+         */
+        public int risingSteps(int intervalMinutes) {
+            long steps = Math.round(risingHours * 60.0 / Math.max(1, intervalMinutes));
+            return (int) Math.max(2, Math.min(steps, recentRanksKept - 1));
+        }
+
+        /** Gains needed among {@code steps}: risingGainPercent of them, rounded up. */
+        public int risingMinGains(int steps) {
+            return Math.max(1, (int) Math.ceil(steps * risingGainPercent / 100.0));
         }
 
         /** Every tier with an interval history: 1, the configured tiers, and the display depth. */

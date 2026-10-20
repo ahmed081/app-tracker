@@ -100,7 +100,7 @@ public final class EventEngine {
                 }
             }
 
-            AppState state = nextState(old, appId, c, slot);
+            AppState state = nextState(old, appId, c, slot, in.intervalMinutes());
 
             if (!baseline && old != null && state.rising() != old.rising()) {
                 appEvents.add(event(appId, state.rising() ? EventType.RISING_STARTED : EventType.RISING_ENDED, null, p, c));
@@ -122,7 +122,7 @@ public final class EventEngine {
         return new Result(events, newStates, tierChanges, heldOverGap, coveredMinutes, gap);
     }
 
-    private AppState nextState(AppState old, long appId, Integer c, Instant slot) {
+    private AppState nextState(AppState old, long appId, Integer c, Instant slot, int intervalMinutes) {
         int depth = config.displayDepth();
         boolean inCur = c != null && c <= depth;
 
@@ -154,16 +154,16 @@ public final class EventEngine {
                 old == null ? slot : old.firstObservedAt(),
                 c != null ? slot : (old == null ? null : old.lastSeenAt()),
                 recent,
-                isRising(recent));
+                isRising(recent, intervalMinutes));
     }
 
     /**
-     * Rising: over the last {@code risingWindow} steps, at least {@code risingMinGains}
-     * were gains and the app gained at least {@code risingMinNetPlaces} places in total.
-     * Every rank in the window must be known.
+     * Rising: over the last {@code risingHours} (that many steps at the chart's interval),
+     * at least {@code risingGainPercent} of the steps were gains and the app gained at
+     * least {@code risingMinNetPlaces} places in total. Every rank in the window must be known.
      */
-    boolean isRising(List<Integer> recent) {
-        int steps = config.risingWindow();
+    boolean isRising(List<Integer> recent, int intervalMinutes) {
+        int steps = config.risingSteps(intervalMinutes);
         if (recent.size() < steps + 1) return false;
         List<Integer> window = recent.subList(recent.size() - steps - 1, recent.size());
         if (window.stream().anyMatch(r -> r == null)) return false;
@@ -172,7 +172,7 @@ public final class EventEngine {
             if (window.get(i) < window.get(i - 1)) gains++;
         }
         int net = window.get(0) - window.get(window.size() - 1);
-        return gains >= config.risingMinGains() && net >= config.risingMinNetPlaces();
+        return gains >= config.risingMinGains(steps) && net >= config.risingMinNetPlaces();
     }
 
     /** The most important event of an app in this snapshot becomes primary. */

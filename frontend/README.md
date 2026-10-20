@@ -13,6 +13,7 @@ The dashboard and app pages of the App Store ranking tracker. It reads only from
 | `/charts/ph/7006/top-free/movers` | Climbers, fallers, new entries, left the chart, rising, tier changes |
 | `/apps/{appleAppId}?chart=…&range=7d` | App details: identity and context, current rank, ranking history graph, key changes, time at the top, ratings, versions, about |
 | `/search?q=…` | Apps by name, developer, Apple ID or bundle ID |
+| `/settings/tracking` · `countries` · `rules` · `status` | Settings: what is tracked and how often, countries, categories, event rules, and collection health (asks for the admin key when the server requires one) |
 
 The chart, the period (1H / 24H / 7D / 30D), the noise filter, the language and the theme are remembered in the browser.
 
@@ -21,12 +22,14 @@ The chart, the period (1H / 24H / 7D / 30D), the noise filter, the language and 
 ```bash
 npm install
 npm run dev:mock     # http://localhost:5173 with a fake API (mock/fixtures): no backend needed
-npm run dev          # http://localhost:5173, /api proxied to http://localhost:8080 (API_PROXY_TARGET to change)
+npm run dev          # http://localhost:5173, /api proxied to http://localhost:8081 (API_PROXY_TARGET to change)
 npm test             # unit tests
 npm run build        # type-check and build to dist/
 ```
 
-The fake API serves recorded responses in exactly the backend's shapes (10 days of simulated hourly data for Casino Top Free, Philippines).
+The fake API serves recorded responses in exactly the backend's shapes (10 days of simulated hourly data for Casino Top Free, Philippines). The Settings API is faked in memory (`mock/mock-manage-api.ts`): changes last until the dev server restarts.
+
+`dev:mock` sets an environment variable the Unix way: on Windows, run it from Git Bash.
 
 ## Deploy
 
@@ -52,21 +55,26 @@ Static hosting (S3, Netlify, any web server) also works: upload `dist/`, edit `d
 ```
 src/
 ├── api/            the only code that knows backend URLs: types (mirror of the API), fetch client, one function per endpoint
+│                   (trackerApi.ts for reads, manageApi.ts for Settings reads and writes)
 ├── app/            store (Redux Toolkit + saga middleware), typed hooks, routes
 ├── config/         runtime configuration (config.js)
-├── domain/         pure rules: rank changes, tiers, chart keys, history summaries, which events matter (unit tested)
+├── domain/         pure rules: rank changes, tiers, chart keys, history summaries, which events matter,
+│                   and manage.ts (which charts get collected, previews, validation, collector health) (unit tested)
 ├── features/
 │   ├── remote/       one cache for every API resource: slice + saga (fetching, de-duplication,
 │   │                 refresh every 5 min and when the tab comes back) + useResource() hook
+│   ├── manage/       saving from Settings: slice + saga (call the API, then mark affected data stale) +
+│   │                 useMutation() hook; a 401 opens the admin-key prompt (key kept in sessionStorage)
 │   ├── preferences/  language, theme, chart, period, noise filter, last visit; saga applies and saves them
 │   └── charts/       which chart is selected (URL → remembered → first with data)
 ├── i18n/           i18next setup, en/ar translations, locale-aware formatting
 ├── components/
-│   ├── ui/           generic pieces: Panel, SegmentedControl, Select, RankDelta, RankTransition, badges, states
+│   ├── ui/           generic pieces: Panel, SegmentedControl, Select, Switch, Button, Field/TextInput/ToggleChip,
+│   │                 Notice, RankDelta, RankTransition, badges, states
 │   ├── app/          domain pieces: AppLabel, EventList, MoverList, Freshness
 │   ├── charts/       RankHistoryChart, BumpChart, Sparkline
 │   └── layout/       AppShell, ChartToolbar
-└── pages/          one file per screen, composing the pieces above
+└── pages/          one file per screen, composing the pieces above; settings/ holds the Settings menu
 ```
 
 **Data flow:** a page calls `useResource('ranking', params)` → the hook dispatches `fetchRequested` → the remote saga calls `trackerApi.ranking(params)` unless a fresh copy is cached → the slice stores the result → the page re-renders. Adding an endpoint means adding one function to `api/trackerApi.ts`; it is then available to every page with full typing.

@@ -38,16 +38,16 @@ public record AppProperties(
             int displayDepth,
             List<Integer> tiers,
             int bigMovePlaces,
-            int risingWindow,
-            int risingMinGains,
+            int risingHours,
+            int risingGainPercent,
             int risingMinNetPlaces,
             int newBestAfterDays,
             int gapFactor,
             int recentRanksKept) {
 
         public EngineModel.Config toEngineConfig() {
-            return new EngineModel.Config(displayDepth, List.copyOf(tiers), bigMovePlaces, risingWindow,
-                    risingMinGains, risingMinNetPlaces, newBestAfterDays, gapFactor, recentRanksKept);
+            return new EngineModel.Config(displayDepth, List.copyOf(tiers), bigMovePlaces, risingHours,
+                    risingGainPercent, risingMinNetPlaces, newBestAfterDays, gapFactor, recentRanksKept);
         }
     }
 }

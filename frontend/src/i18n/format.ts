@@ -18,6 +18,7 @@ export function createFormatters(language: string, t: (key: string, opts?: Recor
   const dateTime = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });
   const relative = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const list = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' });
   let regions: Intl.DisplayNames | null = null;
   try {
     regions = new Intl.DisplayNames([locale], { type: 'region' });
@@ -51,6 +52,8 @@ export function createFormatters(language: string, t: (key: string, opts?: Recor
     },
     bytes: (b: number | null | undefined) => (b == null ? '—' : t('unit.megabytes', { value: num.format(Math.round(b / 1_000_000)) })),
     country: (code: string) => regions?.of(code.toUpperCase()) ?? code.toUpperCase(),
+    /** "Philippines, Japan and Brazil" */
+    list: (items: string[]) => list.format(items),
     /** Genre names from Apple are English; known ones are translated. */
     genre: (id: number, fallback: string) => t(`genre.${id}`, { defaultValue: fallback }),
     chartType: (type: ChartType) => t(`chartType.${type}`),

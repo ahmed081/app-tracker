@@ -56,14 +56,18 @@ public class ChartController {
         return service.headlines(chart(country, genreId, type), TimeWindow.parse(window, "24h"));
     }
 
-    /** Climbers, fallers, new entries, exits, rising apps and tier crossings over a window. */
+    /**
+     * Climbers, fallers, new entries, exits, rising apps and tier crossings over a window.
+     * depth: 25 = moves in and out of the Top 25; 200 (default) = the whole chart.
+     */
     @GetMapping("/{country}/{genreId}/{type}/movers")
     public MoversResponse movers(@PathVariable String country, @PathVariable int genreId, @PathVariable String type,
                                  @RequestParam(defaultValue = "24h") String window,
                                  @RequestParam(defaultValue = "3") int minPlaces,
-                                 @RequestParam(defaultValue = "10") int limit) {
+                                 @RequestParam(defaultValue = "10") int limit,
+                                 @RequestParam(defaultValue = "200") int depth) {
         return service.movers(chart(country, genreId, type), TimeWindow.parse(window, "24h"),
-                clamp(minPlaces, 1, 200), clamp(limit, 1, 100));
+                clamp(minPlaces, 1, 200), clamp(limit, 1, 200), clamp(depth, 1, 200));
     }
 
     /**

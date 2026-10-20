@@ -1,7 +1,7 @@
 import { eventChannel, type EventChannel } from 'redux-saga';
 import { all, call, fork, put, select, take, takeEvery, delay } from 'redux-saga/effects';
 import { ApiError } from '@/api/http';
-import { trackerApi } from '@/api/trackerApi';
+import { resourceApi } from '@/api/resources';
 import type { RootState } from '@/app/store';
 import { remoteActions, type FetchRequest, type RemoteEntry } from './remoteSlice';
 
@@ -24,8 +24,8 @@ export function needsFetch(entry: RemoteEntry | undefined, now: number, force = 
 function* load(key: string, entry: RemoteEntry) {
   yield put(remoteActions.fetchStarted({ key }));
   try {
-    // One generic call: every resource name is a trackerApi function taking (params, signal).
-    const fn = trackerApi[entry.resource] as (p: unknown) => Promise<unknown>;
+    // One generic call: every resource name is an API function taking (params, signal).
+    const fn = resourceApi[entry.resource] as (p: unknown) => Promise<unknown>;
     const data: unknown = yield call(fn, entry.params);
     yield put(remoteActions.fetchSucceeded({ key, data, fetchedAt: Date.now() }));
   } catch (e) {
@@ -47,6 +47,15 @@ function* onRefreshRequested() {
   const now = Date.now();
   for (const [key, entry] of Object.entries(entries)) {
     if (now - entry.requestedAt < RECENTLY_USED_MS && entry.status !== 'loading') yield fork(load, key, entry);
+  }
+}
+
+function* onInvalidated(action: ReturnType<typeof remoteActions.invalidated>) {
+  const entries: Record<string, RemoteEntry> = yield select((s: RootState) => s.remote.entries);
+  const now = Date.now();
+  for (const [key, entry] of Object.entries(entries)) {
+    if (action.payload.resources.includes(entry.resource) && now - entry.requestedAt < RECENTLY_USED_MS
+      && entry.status !== 'loading') yield fork(load, key, entry);
   }
 }
 
@@ -79,6 +88,7 @@ export function* remoteSaga() {
   yield all([
     takeEvery(remoteActions.fetchRequested.type, onFetchRequested),
     takeEvery(remoteActions.refreshRequested.type, onRefreshRequested),
+    takeEvery(remoteActions.invalidated.type, onInvalidated),
     fork(refreshOnFocus),
     fork(refreshPeriodically),
   ]);

@@ -1,11 +1,11 @@
 // One cache for every API resource, keyed by resource name + parameters.
 // Screens request data through useResource(); the saga does the fetching.
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { TrackerApi } from '@/api/trackerApi';
+import type { ResourceApi } from '@/api/resources';
 
-export type ResourceName = keyof TrackerApi;
-export type ResourceParams<R extends ResourceName> = Parameters<TrackerApi[R]>[0];
-export type ResourceData<R extends ResourceName> = Awaited<ReturnType<TrackerApi[R]>>;
+export type ResourceName = keyof ResourceApi;
+export type ResourceParams<R extends ResourceName> = Parameters<ResourceApi[R]>[0];
+export type ResourceData<R extends ResourceName> = Awaited<ReturnType<ResourceApi[R]>>;
 
 export type RemoteStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -77,6 +77,12 @@ const remoteSlice = createSlice({
     },
     /** Re-fetch everything screens used recently (timer, window focus, manual refresh). */
     refreshRequested() {},
+    /** These resources changed on the server (after a save): stale now, re-fetched if in use. */
+    invalidated(state, action: PayloadAction<{ resources: ResourceName[] }>) {
+      for (const entry of Object.values(state.entries)) {
+        if (action.payload.resources.includes(entry.resource)) entry.fetchedAt = undefined;
+      }
+    },
   },
 });
 

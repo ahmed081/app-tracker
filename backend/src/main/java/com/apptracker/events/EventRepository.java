@@ -41,6 +41,12 @@ public class EventRepository {
                 """, Map.of(), Long.class);
     }
 
+    /** Every chart with at least one VALID snapshot (what a full rebuild replays). */
+    public List<Long> chartsWithValidSnapshots() {
+        return jdbc.queryForList("SELECT DISTINCT chart_id FROM snapshot WHERE status = 'VALID' ORDER BY chart_id",
+                Map.of(), Long.class);
+    }
+
     /**
      * True when a pending snapshot is older than one already processed (an
      * out-of-order import, or a FAILED slot later replaced): the chart must be rebuilt.

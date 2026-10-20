@@ -6,6 +6,7 @@ import { chartPath } from '@/domain/charts';
 import { preferencesActions, WINDOWS, type TimeWindow } from '@/features/preferences/preferencesSlice';
 import { flag, useFormat } from '@/i18n/format';
 import { Select } from '@/components/ui/Select';
+import { Combobox } from '@/components/ui/Combobox';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Freshness } from '@/components/app/Freshness';
 
@@ -32,7 +33,9 @@ export function ChartToolbar({ charts, chart, showWindow = true }: { charts: Cha
 
   const countries = [...new Set(charts.map((c) => c.country))];
   const genres = charts.filter((c) => c.country === chart.country)
-    .reduce<Chart[]>((acc, c) => (acc.some((x) => x.genreId === c.genreId) ? acc : [...acc, c]), []);
+    .reduce<Chart[]>((acc, c) => (acc.some((x) => x.genreId === c.genreId) ? acc : [...acc, c]), [])
+    .map((g) => ({ value: String(g.genreId), label: f.genre(g.genreId, g.genreName), keywords: `${g.genreName} ${g.genreId}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
   const types = charts.filter((c) => c.country === chart.country && c.genreId === chart.genreId);
 
   return (
@@ -41,8 +44,8 @@ export function ChartToolbar({ charts, chart, showWindow = true }: { charts: Cha
         options={countries.map((c) => ({ value: c, label: `${flag(c)} ${f.country(c)}` }))}
         onChange={(c) => goTo(charts.find((x) => x.country === c && x.genreId === chart.genreId && x.chartType === chart.chartType)
           ?? charts.find((x) => x.country === c))} />
-      <Select label={t('context.category')} showLabel value={String(chart.genreId)}
-        options={genres.map((g) => ({ value: String(g.genreId), label: f.genre(g.genreId, g.genreName) }))}
+      <Combobox label={t('context.category')} showLabel value={String(chart.genreId)} options={genres}
+        placeholder={t('context.categorySearch')} noMatch={t('context.noCategory')} className="w-56"
         onChange={(g) => goTo(charts.find((x) => x.country === chart.country && x.genreId === Number(g) && x.chartType === chart.chartType)
           ?? charts.find((x) => x.country === chart.country && x.genreId === Number(g)))} />
       <Select label={t('context.chart')} showLabel value={chart.chartType}

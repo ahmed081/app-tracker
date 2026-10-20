@@ -1,6 +1,7 @@
 package com.apptracker.events;
 
 import com.apptracker.config.AppProperties;
+import com.apptracker.manage.RulesStore;
 import com.apptracker.events.EngineModel.Input;
 import com.apptracker.events.EngineModel.Result;
 import com.apptracker.events.EventRepository.SnapshotRef;
@@ -28,13 +29,13 @@ public class EventProcessor {
 
     private final EventRepository repo;
     private final TransactionTemplate tx;
-    private final EventEngine engine;
+    private final RulesStore rules;
     private final boolean enabled;
 
-    public EventProcessor(EventRepository repo, TransactionTemplate tx, AppProperties props) {
+    public EventProcessor(EventRepository repo, TransactionTemplate tx, RulesStore rules, AppProperties props) {
         this.repo = repo;
         this.tx = tx;
-        this.engine = new EventEngine(props.events().toEngineConfig());
+        this.rules = rules;
         this.enabled = props.events().enabled();
     }
 
@@ -51,13 +52,14 @@ public class EventProcessor {
 
     /** Process every pending snapshot of every chart. Returns the number processed. */
     public synchronized int processAll() {
+        EventEngine engine = new EventEngine(rules.current());
         int total = 0;
         for (long chartId : repo.chartsWithPendingSnapshots()) {
             if (repo.needsRebuild(chartId)) {
                 log.info("chart {}: older snapshot arrived, rebuilding its events", chartId);
-                total += rebuild(chartId);
+                total += rebuild(chartId, engine);
             } else {
-                total += processPending(chartId, false);
+                total += processPending(chartId, engine, false);
             }
         }
         return total;
@@ -68,20 +70,24 @@ public class EventProcessor {
      * events are marked as already notified, so a rebuild never sends alerts.
      */
     public synchronized int rebuild(long chartId) {
-        tx.executeWithoutResult(s -> repo.clearDerived(chartId));
-        return processPending(chartId, true);
+        return rebuild(chartId, new EventEngine(rules.current()));
     }
 
-    private int processPending(long chartId, boolean replay) {
+    private int rebuild(long chartId, EventEngine engine) {
+        tx.executeWithoutResult(s -> repo.clearDerived(chartId));
+        return processPending(chartId, engine, true);
+    }
+
+    private int processPending(long chartId, EventEngine engine, boolean replay) {
         int interval = repo.chartInterval(chartId);
         List<SnapshotRef> pending = repo.pendingSnapshots(chartId);
         for (SnapshotRef snap : pending) {
-            tx.executeWithoutResult(s -> processOne(chartId, interval, snap, replay));
+            tx.executeWithoutResult(s -> processOne(engine, chartId, interval, snap, replay));
         }
         return pending.size();
     }
 
-    private void processOne(long chartId, int intervalMinutes, SnapshotRef snap, boolean replay) {
+    private void processOne(EventEngine engine, long chartId, int intervalMinutes, SnapshotRef snap, boolean replay) {
         Optional<SnapshotRef> prev = repo.previousProcessed(chartId, snap.slot());
         Map<Long, Integer> previousRanks = prev.map(p -> repo.ranks(p.id())).orElse(Map.of());
         Map<Long, Integer> currentRanks = repo.ranks(snap.id());

@@ -1,16 +1,26 @@
-# App Store ranking tracker: database, collector, backend and web app.
-#   cp .env.example .env   (fill in the passwords)
-#   docker compose up -d --build
+# App Store ranking tracker: collector, backend and web app, each in its own container.
+#   cp .env.example .env            (fill it in; see DEPLOY.md)
+#   docker compose up -d --build    uses the database named in .env
+#   docker compose --profile local-db up -d --build
+#                                   also starts a new PostgreSQL in Docker
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
 services:
+  # Optional: a new database in Docker (profile "local-db"). Not started by default,
+  # because the app normally uses an existing database (DB settings in .env).
   postgres:
     image: postgres:16
+    profiles: [local-db]
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: apptracker
       POSTGRES_USER: apptracker                 # admin/owner: schema, configuration
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      COLLECTOR_PASSWORD: ${COLLECTOR_PASSWORD:?set COLLECTOR_PASSWORD in .env}
-      BACKEND_PASSWORD: ${BACKEND_PASSWORD:?set BACKEND_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      COLLECTOR_PASSWORD: ${COLLECTOR_PASSWORD:-}
+      BACKEND_PASSWORD: ${BACKEND_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Run on the FIRST start only (empty volume): tables, starting configuration, users.
@@ -19,6 +29,7 @@ services:
       - ./collector/db/docker-init-user.sh:/docker-entrypoint-initdb.d/03-collector-user.sh:ro
       - ./backend/db/docker-init-backend-user.sh:/docker-entrypoint-initdb.d/04-backend-user.sh:ro
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/05-backend-schema.sql:ro
+      - ./backend/db/management.sql:/docker-entrypoint-initdb.d/06-backend-management.sql:ro
       - ./collector/db/create-user.sql:/db/create-user.sql:ro
       - ./backend/db/create-backend-user.sql:/db/create-backend-user.sql:ro
     ports:
@@ -30,41 +41,56 @@ services:
 
   collector:
     build: ./collector
+    image: app-tracker-collector
     restart: unless-stopped
+    logging: *logging
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy, required: false }
     environment:
-      DATABASE_URL: postgres://app_collector:${COLLECTOR_PASSWORD}@postgres:5432/apptracker
+      DATABASE_URL: ${COLLECTOR_DATABASE_URL:?set COLLECTOR_DATABASE_URL in .env}
       USER_AGENT: ${USER_AGENT:-app-tracker/1.0}
 
   backend:
     build: ./backend
+    image: app-tracker-backend
     restart: unless-stopped
+    logging: *logging
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy, required: false }
     environment:
-      JDBC_URL: jdbc:postgresql://postgres:5432/apptracker
-      DATABASE_USER: app_backend
-      DATABASE_PASSWORD: ${BACKEND_PASSWORD}
+      PORT: 8080
+      JDBC_URL: ${BACKEND_JDBC_URL:?set BACKEND_JDBC_URL in .env}
+      DATABASE_USER: ${BACKEND_DB_USER:?set BACKEND_DB_USER in .env}
+      DATABASE_PASSWORD: ${BACKEND_DB_PASSWORD:?set BACKEND_DB_PASSWORD in .env}
       ADMIN_KEY: ${ADMIN_KEY:-}
       USER_AGENT: ${USER_AGENT:-app-tracker/1.0}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_OPTS:--Xmx512m}
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8080:8080"     # for curl on the server only; the web app reaches it inside Docker
 
-  # The web app. It is an independent image (see frontend/README.md to deploy
-  # it elsewhere); here Nginx forwards /api to the backend on the same network.
+  # The web app. Nginx serves it and forwards /api to the backend on the Docker
+  # network, so the browser needs only this one address (no CORS).
   frontend:
     build: ./frontend
+    image: app-tracker-frontend
     restart: unless-stopped
+    logging: *logging
     depends_on:
       - backend
     environment:
       API_UPSTREAM: http://backend:8080
     ports:
-      - "127.0.0.1:3000:80"
+      - "${FRONTEND_BIND:-127.0.0.1:3000}:80"
+
+  # One-off database dump to stdout (profile "tools"; see DEPLOY.md, backups):
+  #   docker compose --profile tools run --rm -T backup > backups/db.dump
+  backup:
+    image: postgres:16
+    profiles: [tools]
+    environment:
+      DATABASE_URL: ${COLLECTOR_DATABASE_URL:?set COLLECTOR_DATABASE_URL in .env}
+    entrypoint: ["sh", "-c", "exec pg_dump --format=custom \"$$DATABASE_URL\""]
 
 volumes:
   pgdata:

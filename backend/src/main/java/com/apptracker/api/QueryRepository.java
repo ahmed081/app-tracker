@@ -112,6 +112,15 @@ public class QueryRepository {
                 """, new MapSqlParameterSource("chart", chartId).addValue("slot", odt(slot)));
     }
 
+    /** The chart's first processed VALID snapshot. */
+    public Optional<SnapRef> earliest(long chartId) {
+        return snap("""
+                SELECT id, slot_start FROM snapshot
+                WHERE chart_id = :chart AND status = 'VALID' AND processed_at IS NOT NULL
+                ORDER BY slot_start LIMIT 1
+                """, new MapSqlParameterSource("chart", chartId));
+    }
+
     public Optional<SnapRef> atOrBefore(long chartId, Instant t) {
         return snap("""
                 SELECT id, slot_start FROM snapshot

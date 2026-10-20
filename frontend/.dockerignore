@@ -1,3 +1,5 @@
 node_modules
 dist
 mock/fixtures
+.env
+.env.*

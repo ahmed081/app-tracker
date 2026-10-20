@@ -16,6 +16,7 @@ import com.apptracker.api.ApiModel.Series;
 import com.apptracker.api.QueryRepository.ChartRow;
 import com.apptracker.api.QueryRepository.SnapRef;
 import com.apptracker.config.AppProperties;
+import com.apptracker.manage.RulesStore;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -36,16 +37,32 @@ public class QueryService {
     static final List<String> TIER_EVENTS = List.of("REACHED_NUMBER_ONE", "LOST_NUMBER_ONE", "ENTERED_TOP_N", "LEFT_TOP_N");
 
     private final QueryRepository repo;
+    private final RulesStore rules;
     private final int displayDepth;
-    private final int headlineTier;
 
-    public QueryService(QueryRepository repo, AppProperties props) {
+    public QueryService(QueryRepository repo, RulesStore rules, AppProperties props) {
         this.repo = repo;
+        this.rules = rules;
         this.displayDepth = props.events().displayDepth();
-        this.headlineTier = props.events().tiers().stream().max(Integer::compare).orElse(10);
+    }
+
+    /** Headlines report entries into the largest tier in force (Top 10 by default). */
+    private int headlineTier() {
+        return rules.current().tiers().stream().max(Integer::compare).orElse(10);
     }
 
     // ---------------------------------------------------------------- ranking
+
+    /**
+     * The snapshot to compare with for a window ending at {@code now}: the last one at
+     * or before the window start; when the chart is younger than the window, its first
+     * snapshot (the response's windowAt then shows the shorter period actually covered).
+     */
+    Optional<SnapRef> windowSnapshot(long chartId, SnapRef now, TimeWindow window) {
+        Instant start = now.slot().minus(Duration.ofMinutes(window.minutes()));
+        return repo.atOrBefore(chartId, start)
+                .or(() -> repo.earliest(chartId).filter(first -> first.slot().isBefore(now.slot())));
+    }
 
     public RankingResponse ranking(ChartRow chart, TimeWindow window, int limit, int trendDays) {
         int depth = Math.min(limit, 200);
@@ -55,7 +72,7 @@ public class QueryService {
         }
         SnapRef now = cur.get();
         Optional<SnapRef> prev = repo.before(chart.id(), now.slot());
-        Optional<SnapRef> win = repo.atOrBefore(chart.id(), now.slot().minus(Duration.ofMinutes(window.minutes())));
+        Optional<SnapRef> win = windowSnapshot(chart.id(), now, window);
 
         Map<Long, Integer> nowRanks = repo.ranks(now.id());
         Map<Long, Integer> prevRanks = prev.map(p -> repo.ranks(p.id())).orElse(Map.of());
@@ -112,7 +129,11 @@ public class QueryService {
 
     // ----------------------------------------------------------------- movers
 
-    public MoversResponse movers(ChartRow chart, TimeWindow window, int minPlaces, int limit) {
+    /**
+     * @param depth only apps ranked within this depth now or at the window start count
+     *              (25 = the Top 25 shown to users; 200 = the whole chart)
+     */
+    public MoversResponse movers(ChartRow chart, TimeWindow window, int minPlaces, int limit, int depth) {
         Optional<SnapRef> cur = repo.latest(chart.id());
         if (cur.isEmpty()) {
             return new MoversResponse(chart.chart(), null, window.label(), null,
@@ -120,7 +141,7 @@ public class QueryService {
         }
         SnapRef now = cur.get();
         Instant windowStart = now.slot().minus(Duration.ofMinutes(window.minutes()));
-        Optional<SnapRef> win = repo.atOrBefore(chart.id(), windowStart);
+        Optional<SnapRef> win = windowSnapshot(chart.id(), now, window);
         Map<Long, Integer> nowRanks = repo.ranks(now.id());
         Map<Long, Integer> winRanks = win.map(w -> repo.ranks(w.id())).orElse(Map.of());
 
@@ -133,8 +154,8 @@ public class QueryService {
             ids.addAll(winRanks.keySet());
             for (Long id : ids) {
                 Move m = new Move(id, winRanks.get(id), nowRanks.get(id));
-                boolean inNow = m.to() != null && m.to() <= displayDepth;
-                boolean inThen = m.from() != null && m.from() <= displayDepth;
+                boolean inNow = m.to() != null && m.to() <= depth;
+                boolean inThen = m.from() != null && m.from() <= depth;
                 if (!inNow && !inThen) continue;
                 if (inNow && !inThen) entries.add(m);
                 if (inThen && !inNow) exits.add(m);
@@ -204,13 +225,13 @@ public class QueryService {
         List<EventRow> newNumberOne = repo.withNames(repo.events(chart.id(), null, since, now.slot(), 0, false,
                 List.of("REACHED_NUMBER_ONE"), 10));
         List<EventRow> enteredTop = repo.withNames(repo.events(chart.id(), null, since, now.slot(), 0, false,
-                List.of("ENTERED_TOP_N"), 50)).stream().filter(e -> e.tier() != null && e.tier() == headlineTier)
+                List.of("ENTERED_TOP_N"), 50)).stream().filter(e -> e.tier() != null && e.tier() == headlineTier())
                 .limit(10).toList();
         List<EventRow> newEntries = repo.withNames(repo.events(chart.id(), null, since, now.slot(), 0, false,
                 List.of("NEW_ENTRY", "RE_ENTRY"), 10));
         boolean quiet = repo.events(chart.id(), null, since, now.slot(), 3, false, null, 1).isEmpty();
 
-        MoversResponse m = movers(chart, window, 1, 1);
+        MoversResponse m = movers(chart, window, 1, 1, displayDepth);
         return new HeadlinesResponse(chart.chart(), now.slot(), window.label(), numberOne, newNumberOne, enteredTop,
                 m.climbers().isEmpty() ? null : m.climbers().get(0),
                 m.fallers().isEmpty() ? null : m.fallers().get(0),
