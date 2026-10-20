@@ -67,7 +67,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_OPTS:--Xmx512m}
     ports:
-      - "127.0.0.1:8080:8080"     # for curl on the server only; the web app reaches it inside Docker
+      # Host side for curl on the server; the web app reaches it inside Docker (backend:8080).
+      - "${BACKEND_BIND:-127.0.0.1:8082}:8080"
 
   # The web app. Nginx serves it and forwards /api to the backend on the Docker
   # network, so the browser needs only this one address (no CORS).
@@ -81,7 +82,7 @@ services:
     environment:
       API_UPSTREAM: http://backend:8080
     ports:
-      - "${FRONTEND_BIND:-127.0.0.1:3000}:80"
+      - "${FRONTEND_BIND:-127.0.0.1:8083}:80"
 
   # One-off database dump to stdout (profile "tools"; see DEPLOY.md, backups):
   #   docker compose --profile tools run --rm -T backup > backups/db.dump

@@ -143,7 +143,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 **Stack:**
 - Spring Boot 3.5.6, Java 17.
 - **NamedParameterJdbcTemplate, no JPA.** No Flyway (see section 3).
-- Listens on `PORT`, default 8081; docker-compose sets 8080.
+- Listens on `PORT`, default 8081; docker-compose sets 8080 inside the container (host side `BACKEND_BIND`, default 127.0.0.1:8082).
 - Database login from `JDBC_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`. Locally, real values go in `backend/config/application.yml` (git-ignored; Spring reads it when started from `backend/`).
 - `ShallowEtagHeaderFilter` (ETag / 304 on `/api/*`).
 - springdoc at `/swagger-ui.html`.
@@ -236,7 +236,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 
 ```bash
 cp .env.example .env              # database logins (COLLECTOR_DATABASE_URL, BACKEND_JDBC_URL/USER/PASSWORD), ADMIN_KEY, USER_AGENT
-docker compose up -d --build      # collector, backend (127.0.0.1:8080), frontend (FRONTEND_BIND, default 127.0.0.1:3000)
+docker compose up -d --build      # collector, backend (BACKEND_BIND, default 127.0.0.1:8082), frontend (FRONTEND_BIND, default 127.0.0.1:8083)
 docker compose logs -f collector backend
 ```
 
