@@ -1,0 +1,72 @@
+server:
+  port: ${PORT:8081}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: app-tracker-backend
+  datasource:
+    # The application connects as the limited app_backend user.
+    url: ${JDBC_URL:jdbc:postgresql://localhost:5432/apptracker}
+    username: ${DATABASE_USER:app_backend}
+    password: ${DATABASE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+  task:
+    scheduling:
+      pool:
+        size: 2     # metadata lookups never delay event processing
+  jackson:
+    default-property-inclusion: always
+    serialization:
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+apptracker:
+  # Required header X-Admin-Key for /api/admin/**. Empty = admin endpoints disabled.
+  admin-key: ${ADMIN_KEY:}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173}
+
+  apple:
+    base-url: ${APPLE_BASE_URL:https://itunes.apple.com}
+    user-agent: ${USER_AGENT:app-tracker-backend/1.0}
+    timeout-seconds: 20
+    min-interval-ms: 1000
+    retry-delays-seconds: [10, 30, 60]
+
+  metadata:
+    enabled: ${METADATA_ENABLED:true}
+    run-every-ms: 300000          # look for apps to refresh every 5 minutes
+    batch-size: 100               # Apple IDs per Lookup call
+    refresh-after-hours: 24       # refresh each app's details daily
+    retry-error-after-minutes: 60
+    seen-within-days: 2           # only apps that charted recently
+    max-apps-per-run: 1000
+
+  events:
+    enabled: ${EVENTS_ENABLED:true}
+    run-every-ms: 60000
+    display-depth: 25
+    tiers: [10, 5]
+    big-move-places: 5
+    # Rising: over the last 24 readings (a day), at least 12 gains and 10 places net.
+    rising-window: 24
+    rising-min-gains: 12
+    rising-min-net-places: 10
+    new-best-after-days: 7
+    gap-factor: 3
+    recent-ranks-kept: 25

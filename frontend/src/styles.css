@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Semantic names, one place to switch light/dark.
+ * Page: cool grey-green; accent: felt-table green, used for selection only.
+ * Up/down use status green/red and always come with an arrow (never colour alone).
+ * Series blue is the validated single-series hue for the ranking line.
+ */
+:root {
+  color-scheme: light;
+  --page: #eef2f0;
+  --surface: #fcfcfb;
+  --surface-2: #f4f7f5;
+  --ink: #15201b;
+  --ink-2: #4a5852;
+  --ink-3: #6f7d77;
+  --line: #d9e1dd;
+  --line-strong: #c3cdc8;
+  --felt: #0d5c46;
+  --felt-soft: #dcede6;
+  --up: #0b7a2f;
+  --up-soft: #e3f3e7;
+  --down: #b42828;
+  --down-soft: #f8e4e3;
+  --series: #2a78d6;
+  --series-soft: #2a78d61f;
+  --focus: #2a78d6;
+  /* Categorical series (fixed order, validated for colour-vision deficiency). */
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+  --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #111715;
+    --surface: #181e1c;
+    --surface-2: #1f2724;
+    --ink: #ecf1ee;
+    --ink-2: #b3bfb9;
+    --ink-3: #8a9792;
+    --line: #2b3431;
+    --line-strong: #3a4541;
+    --felt: #4cc29b;
+    --felt-soft: #1d3a31;
+    --up: #4fcf6e;
+    --up-soft: #183022;
+    --down: #f07878;
+    --down-soft: #3a1f1f;
+    --series: #3987e5;
+    --series-soft: #3987e526;
+    --focus: #6aa8f0;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #111715;
+  --surface: #181e1c;
+  --surface-2: #1f2724;
+  --ink: #ecf1ee;
+  --ink-2: #b3bfb9;
+  --ink-3: #8a9792;
+  --line: #2b3431;
+  --line-strong: #3a4541;
+  --felt: #4cc29b;
+  --felt-soft: #1d3a31;
+  --up: #4fcf6e;
+  --up-soft: #183022;
+  --down: #f07878;
+  --down-soft: #3a1f1f;
+  --series: #3987e5;
+  --series-soft: #3987e526;
+  --focus: #6aa8f0;
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+  --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-felt: var(--felt);
+  --color-felt-soft: var(--felt-soft);
+  --color-up: var(--up);
+  --color-up-soft: var(--up-soft);
+  --color-down: var(--down);
+  --color-down-soft: var(--down-soft);
+  --color-series: var(--series);
+  --font-sans: "Readex Pro Variable", "Readex Pro", "Segoe UI", Tahoma, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--page);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Recharts: keep axis text and grid recessive and on-theme. */
+.recharts-cartesian-axis-tick-value {
+  fill: var(--ink-3);
+  font-size: 12px;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--line);
+}

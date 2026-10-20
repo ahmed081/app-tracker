@@ -1,0 +1,70 @@
+# App Store ranking tracker: database, collector, backend and web app.
+#   cp .env.example .env   (fill in the passwords)
+#   docker compose up -d --build
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: apptracker
+      POSTGRES_USER: apptracker                 # admin/owner: schema, configuration
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      COLLECTOR_PASSWORD: ${COLLECTOR_PASSWORD:?set COLLECTOR_PASSWORD in .env}
+      BACKEND_PASSWORD: ${BACKEND_PASSWORD:?set BACKEND_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Run on the FIRST start only (empty volume): tables, starting configuration, users.
+      - ./collector/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./collector/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./collector/db/docker-init-user.sh:/docker-entrypoint-initdb.d/03-collector-user.sh:ro
+      - ./backend/db/docker-init-backend-user.sh:/docker-entrypoint-initdb.d/04-backend-user.sh:ro
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/05-backend-schema.sql:ro
+      - ./collector/db/create-user.sql:/db/create-user.sql:ro
+      - ./backend/db/create-backend-user.sql:/db/create-backend-user.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apptracker -d apptracker"]
+      interval: 5s
+      retries: 10
+
+  collector:
+    build: ./collector
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://app_collector:${COLLECTOR_PASSWORD}@postgres:5432/apptracker
+      USER_AGENT: ${USER_AGENT:-app-tracker/1.0}
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      JDBC_URL: jdbc:postgresql://postgres:5432/apptracker
+      DATABASE_USER: app_backend
+      DATABASE_PASSWORD: ${BACKEND_PASSWORD}
+      ADMIN_KEY: ${ADMIN_KEY:-}
+      USER_AGENT: ${USER_AGENT:-app-tracker/1.0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # The web app. It is an independent image (see frontend/README.md to deploy
+  # it elsewhere); here Nginx forwards /api to the backend on the same network.
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_UPSTREAM: http://backend:8080
+    ports:
+      - "127.0.0.1:3000:80"
+
+volumes:
+  pgdata:

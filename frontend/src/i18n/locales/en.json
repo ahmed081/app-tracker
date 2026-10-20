@@ -1,0 +1,309 @@
+{
+  "app": {
+    "name": "Rankline",
+    "about": "About this app",
+    "appleId": "Apple ID",
+    "atNumberOne": "Number one in this chart",
+    "average30d": "Average (30 days)",
+    "backToRanking": "Back to the ranking",
+    "belowTop25": "Outside the Top 25",
+    "bestRank": "Best rank",
+    "bundleId": "Bundle ID",
+    "change24h": "24 hours",
+    "change7d": "7 days",
+    "chartsOfApp": "Charts this app appears in",
+    "currentRank": "Current rank",
+    "firstSeen": "First seen",
+    "free": "Free",
+    "inChartSince": "In the Top 25 since {{when}}",
+    "inTopN": "In the Top {{n}}",
+    "keyChanges": "Key changes",
+    "keyChangesHint": "Moves that mattered in this chart, newest first",
+    "languages": "Languages",
+    "lastSeenRanked": "Last ranked {{when}}",
+    "lastUpdate": "Last update",
+    "noDescription": "No description yet. Details are fetched from the App Store within a day.",
+    "noKeyChanges": "No major moves yet. They appear here as the app climbs or falls.",
+    "noRatings": "No ratings collected yet.",
+    "noVersions": "No version history collected yet.",
+    "notFound": "This app has not appeared in any tracked chart.",
+    "notRankedNow": "Not in the chart now",
+    "notTracked": "This app is not in any tracked chart right now.",
+    "openInStore": "Open in App Store",
+    "performance": "Time at the top",
+    "performanceHint": "Total time spent in each tier since tracking began",
+    "price": "Price",
+    "ratingAverage": "Average rating",
+    "ratingCount": "Ratings",
+    "ratingGained": "New ratings ({{days}} days)",
+    "ratings": "Ratings",
+    "ratingsCount_one": "({{value}} rating)",
+    "ratingsCount_other": "({{value}} ratings)",
+    "released": "Released",
+    "size": "Size",
+    "tierNumberOne": "#1",
+    "trackedSince": "Tracked since",
+    "version": "Version {{version}}",
+    "versions": "Versions",
+    "worstRank": "Worst rank"
+  },
+  "action": {
+    "retry": "Try again"
+  },
+  "badge": {
+    "NUMBER_ONE": "#1",
+    "TOP_5": "Top 5",
+    "TOP_10": "Top 10",
+    "NEW_ENTRY": "New",
+    "RE_ENTRY": "Back",
+    "NEW_BEST": "Best ever",
+    "RISING": "Rising"
+  },
+  "bump": {
+    "legend": "Apps in the chart"
+  },
+  "chart": {
+    "topN": "Top {{n}}"
+  },
+  "charts": {
+    "none": "No charts are tracked yet. Enable a country and a category to start collecting.",
+    "notFound": "This chart is not tracked."
+  },
+  "chartType": {
+    "TOP_FREE": "Top Free",
+    "TOP_PAID": "Top Paid",
+    "TOP_GROSSING": "Top Grossing"
+  },
+  "context": {
+    "category": "Category",
+    "chart": "Chart",
+    "country": "Country"
+  },
+  "delta": {
+    "new": "New",
+    "none": "No comparison",
+    "same": "No change",
+    "upBy_one": "Up {{count}} place",
+    "upBy_other": "Up {{count}} places",
+    "downBy_one": "Down {{count}} place",
+    "downBy_other": "Down {{count}} places"
+  },
+  "error": {
+    "generic": "Something went wrong while loading this.",
+    "network": "Can't reach the server. Check your connection, then try again.",
+    "notFound": "Not found.",
+    "server": "The server returned an error ({{status}}). Try again in a moment."
+  },
+  "event": {
+    "REACHED_NUMBER_ONE": "{{app}} reached #1 (from #{{from}})",
+    "REACHED_NUMBER_ONE_NEW": "{{app}} reached #1",
+    "LOST_NUMBER_ONE": "{{app}} lost #1, now #{{to}}",
+    "ENTERED_TOP_N": "{{app}} entered the Top {{tier}} (#{{from}} → #{{to}})",
+    "LEFT_TOP_N": "{{app}} left the Top {{tier}} (#{{from}} → #{{to}})",
+    "NEW_ENTRY": "{{app}} entered the chart at #{{to}}",
+    "RE_ENTRY": "{{app}} came back to the chart at #{{to}}",
+    "LEFT_CHART": "{{app}} left the chart (was #{{from}})",
+    "LEFT_CHART_TO": "{{app}} left the chart: #{{from}} → #{{to}}",
+    "NEW_BEST": "{{app}} reached its best rank: #{{to}}",
+    "BIG_MOVE_UP": "{{app}} jumped from #{{from}} to #{{to}}",
+    "BIG_MOVE_DOWN": "{{app}} dropped from #{{from}} to #{{to}}",
+    "RISING_STARTED": "{{app}} is climbing steadily (now #{{to}})",
+    "RISING_ENDED": "{{app}} stopped climbing (#{{to}})",
+    "MOVED_UP": "{{app}} moved up: #{{from}} → #{{to}}",
+    "MOVED_DOWN": "{{app}} moved down: #{{from}} → #{{to}}",
+    "FIRST_OBSERVED": "{{app}} first seen at #{{to}}",
+    "ENTERED_TOP_N_NEW": "{{app}} entered the Top {{tier}} at #{{to}}",
+    "LEFT_TOP_N_OUT": "{{app}} left the Top {{tier}} and the chart (was #{{from}})",
+    "LOST_NUMBER_ONE_OUT": "{{app}} lost #1 and left the chart"
+  },
+  "events": {
+    "afterGap": "after a gap in the data",
+    "empty": "No important moves in this period.",
+    "thisApp": "The app"
+  },
+  "freshness": {
+    "delayed": "Data delayed: last update {{when}}",
+    "noData": "No data yet",
+    "updated": "Updated {{when}}"
+  },
+  "genre": {
+    "6014": "Games",
+    "7001": "Action",
+    "7002": "Adventure",
+    "7003": "Casual",
+    "7004": "Board",
+    "7005": "Card",
+    "7006": "Casino",
+    "7009": "Family",
+    "7011": "Music",
+    "7012": "Puzzle",
+    "7013": "Racing",
+    "7014": "Role Playing",
+    "7015": "Simulation",
+    "7016": "Sports",
+    "7017": "Strategy",
+    "7018": "Trivia",
+    "7019": "Word",
+    "6015": "Finance",
+    "6016": "Entertainment"
+  },
+  "history": {
+    "best": "Best in this period: {{rank}} on {{when}}.",
+    "climbed": "Climbed from {{from}} to {{to}} over {{period}}.",
+    "colRank": "Rank",
+    "colTime": "Time",
+    "fell": "Fell from {{from}} to {{to}} over {{period}}.",
+    "legendDown": "Fell out of a tier or the chart",
+    "legendGaps": "A break in the line means there is no ranking for that period.",
+    "legendRelease": "New version",
+    "legendUp": "Reached a tier or #1",
+    "notEnough": "Not enough history for this period yet.",
+    "range": "Period",
+    "showTable": "Show the data as a table",
+    "steady": "Held at {{rank}} over {{period}}.",
+    "title": "Ranking history"
+  },
+  "movers": {
+    "empty": "Nothing to show for this period.",
+    "title": "Movers",
+    "tab": {
+      "climbers": "Climbers",
+      "fallers": "Fallers",
+      "newEntries": "New entries",
+      "leftChart": "Left the chart",
+      "rising": "Rising",
+      "tierCrossings": "Tier changes"
+    },
+    "hint": {
+      "climbers": "Apps that gained the most places over the last {{window}}",
+      "fallers": "Apps that lost the most places over the last {{window}}",
+      "newEntries": "Apps that entered the Top 25 over the last {{window}}",
+      "leftChart": "Apps that left the Top 25 over the last {{window}}",
+      "rising": "Apps climbing steadily over the last day, possibly heading for the top",
+      "tierCrossings": "Apps that reached or lost #1, the Top 5 or the Top 10 over the last {{window}}"
+    }
+  },
+  "nav": {
+    "main": "Main",
+    "movers": "Movers",
+    "overview": "Overview",
+    "ranking": "Ranking",
+    "skip": "Skip to content"
+  },
+  "notFound": {
+    "body": "The page you asked for does not exist.",
+    "home": "Go to the overview",
+    "title": "Page not found"
+  },
+  "overview": {
+    "allMovers": "See all movers",
+    "biggestClimber": "Biggest climber",
+    "biggestDrop": "Biggest drop",
+    "headlines": "What changed",
+    "latestEvents": "Latest important moves",
+    "noClimber": "No app gained 3 places or more.",
+    "noDrop": "No app lost 3 places or more.",
+    "noRising": "No app is climbing steadily right now.",
+    "noTop10Entries": "No new apps in the Top 10.",
+    "numberOne": "Number one",
+    "numberOneLong": "Held since tracking began",
+    "numberOneSince": "Number one since {{when}}",
+    "quiet": "Quiet period: no tier changes.",
+    "rising": "Rising apps",
+    "risingHint": "Climbing steadily over the last day",
+    "sinceVisit": "Since your last visit {{when}}",
+    "sinceVisitNumberOne_one": "#1 changed hands once",
+    "sinceVisitNumberOne_other": "#1 changed hands {{count}} times",
+    "sinceVisitSummary_one": "{{count}} major move",
+    "sinceVisitSummary_other": "{{count}} major moves",
+    "sinceVisitTop10_one": "{{count}} app entered the Top 10",
+    "sinceVisitTop10_other": "{{count}} apps entered the Top 10",
+    "title": "Overview",
+    "top10Entries": "New in the Top 10"
+  },
+  "range": {
+    "24h": "the last 24 hours",
+    "7d": "the last 7 days",
+    "30d": "the last 30 days",
+    "3m": "the last 3 months",
+    "1y": "the last year",
+    "all": "all time",
+    "short": {
+      "24h": "24H",
+      "7d": "7D",
+      "30d": "30D",
+      "3m": "3M",
+      "1y": "1Y",
+      "all": "All"
+    }
+  },
+  "ranking": {
+    "bumpHint": "How today's top 8 got there over the last 7 days. Hover a name to follow one app.",
+    "bumpTitle": "Top 8 over time",
+    "caption": "Current ranking with changes since the previous reading and over the selected period",
+    "colApp": "App",
+    "colChange": "Change",
+    "colRank": "Rank",
+    "colRating": "Rating",
+    "colTrend": "7 days",
+    "empty": "No ranking collected yet for this chart.",
+    "leftHint": "Apps that dropped out of the Top 25 in the latest reading ({{when}})",
+    "leftTitle": "Left the chart",
+    "leftWas": "was {{was}}",
+    "leftWasNow": "was {{was}}, now {{now}}",
+    "noise": "Hide small moves",
+    "noiseMin": "≥{{n}}",
+    "noiseOff": "All moves",
+    "showLess": "Show the Top 25",
+    "showMore": "Show the Top 100",
+    "tableHint": "Change since the previous reading, and over the last {{window}}",
+    "tableTitle": "Current ranking",
+    "title": "Top {{n}}",
+    "view": "View",
+    "viewBump": "Over time",
+    "viewTable": "Table"
+  },
+  "search": {
+    "label": "Search apps",
+    "noResults": "No tracked app matches “{{q}}”.",
+    "notRanked": "Not ranked now",
+    "placeholder": "Search apps or developers",
+    "resultsFor": "Results for “{{q}}”",
+    "title": "Search",
+    "tooShort": "Type at least 2 characters."
+  },
+  "settings": {
+    "switchLanguage": "Switch to Arabic",
+    "theme": "Theme: {{theme}}. Change theme",
+    "themeName": {
+      "system": "Match system",
+      "light": "Light",
+      "dark": "Dark"
+    }
+  },
+  "state": {
+    "loading": "Loading",
+    "noData": "No data yet.",
+    "notEnoughHistory": "Not enough history"
+  },
+  "unit": {
+    "days": "{{value}} d",
+    "hours": "{{value}} h",
+    "megabytes": "{{value}} MB"
+  },
+  "window": {
+    "label": "Period",
+    "short": {
+      "1h": "1H",
+      "24h": "24H",
+      "7d": "7D",
+      "30d": "30D"
+    },
+    "long": {
+      "1h": "hour",
+      "24h": "24 hours",
+      "7d": "7 days",
+      "30d": "30 days"
+    }
+  }
+}

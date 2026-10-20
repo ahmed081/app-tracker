@@ -1,0 +1,5 @@
+# LF everywhere: shell scripts and SQL run inside Linux containers.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

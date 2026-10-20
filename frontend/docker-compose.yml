@@ -1,0 +1,13 @@
+# Deploy the frontend on its own. Point it at the backend in one of two ways:
+#   API_UPSTREAM=http://backend-host:8080   Nginx forwards /api to the backend (same origin, no CORS)
+#   API_BASE_URL=https://api.example.com    the browser calls the backend directly
+#                                           (add this site's address to the backend's CORS_ORIGINS)
+services:
+  frontend:
+    build: .
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-}
+      API_BASE_URL: ${API_BASE_URL:-}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"

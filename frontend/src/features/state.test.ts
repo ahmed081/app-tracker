@@ -1,0 +1,63 @@
+import { describe, expect, it } from 'vitest';
+import { expectSaga } from './testing/expectSaga';
+import reducer, { remoteActions, resourceKey, type RemoteEntry } from './remote/remoteSlice';
+import { FRESH_MS, needsFetch } from './remote/remoteSaga';
+import prefsReducer, { loadPreferences, preferencesActions, STORAGE_KEY } from './preferences/preferencesSlice';
+
+describe('remote cache', () => {
+  it('builds the same key whatever the parameter order', () => {
+    expect(resourceKey('ranking', { chartKey: 'ph/7006/top-free', window: '24h', limit: 25 }))
+      .toBe(resourceKey('ranking', { limit: 25, window: '24h', chartKey: 'ph/7006/top-free' }));
+    expect(resourceKey('ranking', { chartKey: 'a', window: '24h', limit: 25 }))
+      .not.toBe(resourceKey('ranking', { chartKey: 'a', window: '7d', limit: 25 }));
+  });
+
+  it('keeps previous data when a refresh fails', () => {
+    const key = 'charts:{}';
+    let s = reducer(undefined, remoteActions.fetchRequested({ resource: 'charts', params: {}, key }));
+    s = reducer(s, remoteActions.fetchStarted({ key }));
+    s = reducer(s, remoteActions.fetchSucceeded({ key, data: [1], fetchedAt: 1 }));
+    s = reducer(s, remoteActions.fetchStarted({ key }));
+    s = reducer(s, remoteActions.fetchFailed({ key, error: { status: 0, message: 'network' } }));
+    expect(s.entries[key]?.status).toBe('error');
+    expect(s.entries[key]?.data).toEqual([1]);
+  });
+
+  it('decides when to call the API', () => {
+    const now = 1_000_000;
+    const entry = (over: Partial<RemoteEntry>): RemoteEntry => ({ status: 'success', requestedAt: now, resource: 'charts', params: {}, ...over });
+    expect(needsFetch(undefined, now)).toBe(true);
+    expect(needsFetch(entry({ status: 'loading' }), now, true)).toBe(false);          // never twice at once
+    expect(needsFetch(entry({ fetchedAt: now - 1000 }), now)).toBe(false);            // fresh: reuse
+    expect(needsFetch(entry({ fetchedAt: now - FRESH_MS - 1 }), now)).toBe(true);     // stale: refetch
+    expect(needsFetch(entry({ fetchedAt: now - 1000 }), now, true)).toBe(true);       // forced
+    expect(needsFetch(entry({ status: 'error' }), now)).toBe(true);
+  });
+
+  it('runs the fetch saga end to end against a fake API', async () => {
+    const result = await expectSaga();
+    expect(result.status).toBe('success');
+    expect(result.calls).toBe(1);   // a second request for fresh data does not call the API again
+  });
+});
+
+describe('preferences', () => {
+  it('restores saved choices and ignores invalid ones', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ language: 'ar', theme: 'dark', window: '9y', minPlaces: 3, chartKey: 'ph/7006/top-free' }));
+    const p = loadPreferences();
+    expect(p).toMatchObject({ language: 'ar', theme: 'dark', window: '24h', minPlaces: 3, chartKey: 'ph/7006/top-free' });
+  });
+
+  it('remembers the previous visit only after 30 minutes away', () => {
+    const now = new Date('2026-10-19T12:00:00Z');
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ lastVisitAt: '2026-10-19T11:50:00Z' }));
+    expect(loadPreferences(now).previousVisitAt).toBeNull();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ lastVisitAt: '2026-10-19T09:00:00Z' }));
+    expect(loadPreferences(now).previousVisitAt).toBe('2026-10-19T09:00:00Z');
+  });
+
+  it('clamps the noise filter', () => {
+    const s = prefsReducer(loadPreferences(), preferencesActions.minPlacesChanged(500));
+    expect(s.minPlaces).toBe(50);
+  });
+});

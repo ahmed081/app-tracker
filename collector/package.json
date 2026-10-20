@@ -1,0 +1,23 @@
+{
+  "name": "app-tracker-collector",
+  "version": "1.0.0",
+  "description": "Collects Apple App Store chart rankings into PostgreSQL",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "db:schema": "node src/cli.js db:schema",
+    "db:seed": "node src/cli.js db:seed",
+    "sync-genres": "node src/cli.js sync-genres",
+    "sync-charts": "node src/cli.js sync-charts",
+    "collect": "node src/cli.js collect",
+    "ingest": "node src/cli.js ingest",
+    "import": "node src/cli.js import",
+    "start": "node src/cli.js run",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}
