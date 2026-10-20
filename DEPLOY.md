@@ -8,7 +8,7 @@ Three containers, built from this repository:
 | `backend` | `app-tracker-backend` | `BACKEND_BIND` (default `127.0.0.1:8084`, server only) | API, event engine, app details |
 | `frontend` | `app-tracker-frontend` | `FRONTEND_BIND` (default `127.0.0.1:3003`) | The web app; Nginx forwards `/api` to the backend |
 
-The database is **not** in a container by default. All three use the PostgreSQL named in `.env`, which is the existing `app_tracker_db` today. A fourth container with a new, empty database is available with `--profile local-db` (section 8).
+The database is **not** in Docker. All three use the PostgreSQL named in `.env`, which is the existing `app_tracker_db` today. To set up a new database instead, see section 8.
 
 ```
 browser ──HTTPS──► Caddy (host, :443) ──► frontend :3003 ──/api──► backend :8084 ──┐
@@ -79,7 +79,6 @@ ssh user@SERVER 'chmod 600 ~/app-tracker/.env'
 | `BACKEND_JAVA_OPTS` | Backend memory, `-Xmx512m` by default. |
 | `FRONTEND_BIND` | `127.0.0.1:3003` behind Caddy (section 6), or `3003` (or `80`) for plain HTTP without a domain. |
 | `BACKEND_BIND` | `127.0.0.1:8084`: the API on the server only, for checks. Inside Docker the backend always uses 8080. |
-| `POSTGRES_PASSWORD`, `COLLECTOR_PASSWORD`, `BACKEND_PASSWORD` | Only for `--profile local-db`. |
 
 If a value contains `$`, `#` or spaces, keep it in single quotes, as `.env` already does.
 
@@ -169,27 +168,20 @@ The schema already exists in `app_tracker_db`, so there is nothing to run.
 Try it once by hand first: `docker compose --profile tools run --rm -T backup > backups/test.dump && ls -lh backups`.
 To restore: `pg_restore --clean --if-exists -d <url> backups/db-YYYY-MM-DD.dump`.
 
-## 8. Option: a new database in Docker
+## 8. Option: setting up a new database
 
-This gives a fresh, empty database with the least-privilege users `app_collector` and `app_backend`.
+Only needed for a new, empty database; `app_tracker_db` already has everything. Run the scripts once, as the database owner, from the project folder:
 
-1. In `.env`, set the three passwords. Use letters, digits, `-` and `_` only.
-2. Point the logins at the `postgres` container:
-   ```
-   POSTGRES_PASSWORD=...
-   COLLECTOR_PASSWORD=pw-c
-   BACKEND_PASSWORD=pw-b
-   COLLECTOR_DATABASE_URL=postgres://app_collector:pw-c@postgres:5432/apptracker
-   BACKEND_JDBC_URL=jdbc:postgresql://postgres:5432/apptracker
-   BACKEND_DB_USER=app_backend
-   BACKEND_DB_PASSWORD=pw-b
-   ```
-3. Start everything with the profile:
-   ```bash
-   docker compose --profile local-db up -d --build
-   ```
+```bash
+DB=postgres://OWNER:PASSWORD@HOST:5432/apptracker      # an existing, empty database
+psql "$DB" -v ON_ERROR_STOP=1 -f collector/db/schema.sql -f collector/db/seed.sql
+# Optional least-privilege logins for the collector and the backend:
+psql "$DB" -v ON_ERROR_STOP=1 -v collector_password=pw-c -f collector/db/create-user.sql
+psql "$DB" -v ON_ERROR_STOP=1 -v backend_password=pw-b -f backend/db/create-backend-user.sql
+psql "$DB" -v ON_ERROR_STOP=1 -f backend/db/schema.sql -f backend/db/management.sql
+```
 
-On the first start, Postgres creates the tables, the starting configuration (PH Board/Card/Casino) and the two users. **Always use the same `--profile local-db` flag** for later commands, or Compose leaves that container out.
+This creates the tables and the starting configuration (PH Board/Card/Casino). Then point `COLLECTOR_DATABASE_URL` and `BACKEND_*` in `.env` at it. Use letters, digits, `-` and `_` only in passwords.
 
 ## 9. Everyday commands
 

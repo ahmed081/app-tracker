@@ -7,7 +7,7 @@ app-tracker/
 ├── collector/          Node.js: fetches charts from Apple on schedule, stores history (milestones 1–3)
 ├── backend/            Spring Boot (Java 17): app details, ranking events, REST API (milestones 4–6)
 ├── frontend/           React web app in English and Arabic: dashboard, app pages and Settings (milestones 7–8)
-├── docker-compose.yml  collector + backend + web app (+ optional PostgreSQL, profile local-db)
+├── docker-compose.yml  collector + backend + web app (the database runs elsewhere)
 ├── .env.example        database logins and settings
 └── DEPLOY.md           step-by-step deployment on a Linux server
 ```
@@ -24,7 +24,7 @@ docker compose logs -f collector backend
 
 To deploy on a server (HTTPS, firewall, backups), follow [DEPLOY.md](DEPLOY.md).
 
-With a new database in Docker instead (`docker compose --profile local-db up -d --build`, see DEPLOY.md section 8), the first start creates the tables, the starting configuration (Board, Card, Casino · Top Free · Philippines) and three users:
+The database is not in Docker. A new database is set up once with the SQL scripts (DEPLOY.md section 8), which create the tables, the starting configuration (Board, Card, Casino · Top Free · Philippines) and three users:
 
 | User | Used by | Can |
 |---|---|---|

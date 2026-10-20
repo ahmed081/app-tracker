@@ -10,4 +10,4 @@ services:
       API_UPSTREAM: ${API_UPSTREAM:-}
       API_BASE_URL: ${API_BASE_URL:-}
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3003}:80"

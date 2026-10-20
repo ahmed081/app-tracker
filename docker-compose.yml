@@ -1,51 +1,17 @@
 # App Store ranking tracker: collector, backend and web app, each in its own container.
 #   cp .env.example .env            (fill it in; see DEPLOY.md)
-#   docker compose up -d --build    uses the database named in .env
-#   docker compose --profile local-db up -d --build
-#                                   also starts a new PostgreSQL in Docker
+#   docker compose up -d --build
+# The database is not in Docker: all three use the PostgreSQL named in .env.
 x-logging: &logging
   driver: json-file
   options: { max-size: "10m", max-file: "5" }
 
 services:
-  # Optional: a new database in Docker (profile "local-db"). Not started by default,
-  # because the app normally uses an existing database (DB settings in .env).
-  postgres:
-    image: postgres:16
-    profiles: [local-db]
-    restart: unless-stopped
-    logging: *logging
-    environment:
-      POSTGRES_DB: apptracker
-      POSTGRES_USER: apptracker                 # admin/owner: schema, configuration
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-      COLLECTOR_PASSWORD: ${COLLECTOR_PASSWORD:-}
-      BACKEND_PASSWORD: ${BACKEND_PASSWORD:-}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      # Run on the FIRST start only (empty volume): tables, starting configuration, users.
-      - ./collector/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./collector/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
-      - ./collector/db/docker-init-user.sh:/docker-entrypoint-initdb.d/03-collector-user.sh:ro
-      - ./backend/db/docker-init-backend-user.sh:/docker-entrypoint-initdb.d/04-backend-user.sh:ro
-      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/05-backend-schema.sql:ro
-      - ./backend/db/management.sql:/docker-entrypoint-initdb.d/06-backend-management.sql:ro
-      - ./collector/db/create-user.sql:/db/create-user.sql:ro
-      - ./backend/db/create-backend-user.sql:/db/create-backend-user.sql:ro
-    ports:
-      - "127.0.0.1:5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U apptracker -d apptracker"]
-      interval: 5s
-      retries: 10
-
   collector:
     build: ./collector
     image: app-tracker-collector
     restart: unless-stopped
     logging: *logging
-    depends_on:
-      postgres: { condition: service_healthy, required: false }
     environment:
       DATABASE_URL: ${COLLECTOR_DATABASE_URL:?set COLLECTOR_DATABASE_URL in .env}
       USER_AGENT: ${USER_AGENT:-app-tracker/1.0}
@@ -55,8 +21,6 @@ services:
     image: app-tracker-backend
     restart: unless-stopped
     logging: *logging
-    depends_on:
-      postgres: { condition: service_healthy, required: false }
     environment:
       PORT: 8080
       JDBC_URL: ${BACKEND_JDBC_URL:?set BACKEND_JDBC_URL in .env}
@@ -93,5 +57,3 @@ services:
       DATABASE_URL: ${COLLECTOR_DATABASE_URL:?set COLLECTOR_DATABASE_URL in .env}
     entrypoint: ["sh", "-c", "exec pg_dump --format=custom \"$$DATABASE_URL\""]
 
-volumes:
-  pgdata:

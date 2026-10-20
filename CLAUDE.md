@@ -30,7 +30,7 @@ Apple Lookup API ─────────────────────
 | Collector | `collector/` | 1–3 | Configuration → charts; fetches each chart once per slot; stores the raw response; validates it; writes the history |
 | Backend | `backend/` | 4–6 | App details (Lookup API); event engine; read API `/api/...`; Settings API `/api/manage/...` |
 | Frontend | `frontend/` | 7–8 + Settings | Dashboard, ranking, movers, app page, search, Settings. Deployed separately; talks only to the API |
-| Root | `docker-compose.yml`, `.env.example`, `DEPLOY.md` | | Three containers (collector, backend, frontend); PostgreSQL only with `--profile local-db` |
+| Root | `docker-compose.yml`, `.env.example`, `DEPLOY.md` | | Three containers (collector, backend, frontend); the database runs outside Docker |
 
 The **database is the only link between the collector and the backend.** They never call each other.
 
@@ -242,7 +242,7 @@ docker compose logs -f collector backend
 
 The containers use the database named in `.env` (today the existing `app_tracker_db`, one owner login `app_tracker_user`). `DEPLOY.md` is the server guide: Docker install, copying the project, Caddy for HTTPS, firewall, backups (`docker compose --profile tools run --rm -T backup`). Never run a local collector or backend against the same database as the server: the collector's advisory lock makes the second one exit, and two backends would both create events.
 
-With `--profile local-db`, a `postgres` container is added. On its first start (empty volume), Postgres's init scripts apply the collector's schema and seed, create `app_collector` and `app_backend`, and apply `backend/db/schema.sql` and `backend/db/management.sql`. On an existing database, run `backend/db/management.sql` once as the admin.
+There is no database container. A new database is set up by hand with the SQL scripts (DEPLOY.md section 8): the collector's schema and seed, `create-user.sql` / `create-backend-user.sql` for `app_collector` and `app_backend`, then `backend/db/schema.sql` and `backend/db/management.sql`. On an existing database, run `backend/db/management.sql` once as the admin.
 
 Secrets live only in `.env`. It is git-ignored; set it to `chmod 600`. Use only letters, digits, `-` and `_` in passwords.
 
