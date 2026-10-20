@@ -68,7 +68,7 @@ services:
       JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_OPTS:--Xmx512m}
     ports:
       # Host side for curl on the server; the web app reaches it inside Docker (backend:8080).
-      - "${BACKEND_BIND:-127.0.0.1:8082}:8080"
+      - "${BACKEND_BIND:-127.0.0.1:8084}:8080"
 
   # The web app. Nginx serves it and forwards /api to the backend on the Docker
   # network, so the browser needs only this one address (no CORS).

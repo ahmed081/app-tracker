@@ -5,13 +5,13 @@ Three containers, built from this repository:
 | Container | Image | Listens on | Role |
 |---|---|---|---|
 | `collector` | `app-tracker-collector` | nothing | Reads the Apple charts, writes the history |
-| `backend` | `app-tracker-backend` | `BACKEND_BIND` (default `127.0.0.1:8082`, server only) | API, event engine, app details |
+| `backend` | `app-tracker-backend` | `BACKEND_BIND` (default `127.0.0.1:8084`, server only) | API, event engine, app details |
 | `frontend` | `app-tracker-frontend` | `FRONTEND_BIND` (default `127.0.0.1:3003`) | The web app; Nginx forwards `/api` to the backend |
 
 The database is **not** in a container by default. All three use the PostgreSQL named in `.env`, which is the existing `app_tracker_db` today. A fourth container with a new, empty database is available with `--profile local-db` (section 8).
 
 ```
-browser ──HTTPS──► Caddy (host, :443) ──► frontend :3003 ──/api──► backend :8082 ──┐
+browser ──HTTPS──► Caddy (host, :443) ──► frontend :3003 ──/api──► backend :8084 ──┐
                                                                   collector ───────┴──► PostgreSQL
 ```
 
@@ -78,7 +78,7 @@ ssh user@SERVER 'chmod 600 ~/app-tracker/.env'
 | `CORS_ORIGINS` | Only needed if a web app on another address calls the API directly. |
 | `BACKEND_JAVA_OPTS` | Backend memory, `-Xmx512m` by default. |
 | `FRONTEND_BIND` | `127.0.0.1:3003` behind Caddy (section 6), or `3003` (or `80`) for plain HTTP without a domain. |
-| `BACKEND_BIND` | `127.0.0.1:8082`: the API on the server only, for checks. Inside Docker the backend always uses 8080. |
+| `BACKEND_BIND` | `127.0.0.1:8084`: the API on the server only, for checks. Inside Docker the backend always uses 8080. |
 | `POSTGRES_PASSWORD`, `COLLECTOR_PASSWORD`, `BACKEND_PASSWORD` | Only for `--profile local-db`. |
 
 If a value contains `$`, `#` or spaces, keep it in single quotes, as `.env` already does.
@@ -99,7 +99,7 @@ docker compose logs -f collector backend
 
 **Check the services:**
 ```bash
-curl -s localhost:8082/actuator/health          # {"status":"UP"}
+curl -s localhost:8084/actuator/health          # {"status":"UP"}
 curl -s localhost:3003/api/charts | head -c 300 # the API, through the web app's Nginx
 ```
 
@@ -218,7 +218,7 @@ After an update that changes SQL files in `collector/db/` or `backend/db/`, appl
 | Backend `password authentication failed` | `BACKEND_DB_PASSWORD` is wrong, or has a `$` without single quotes. |
 | Collector `Another collector is already running` | Another collector uses the same database, maybe the one on your PC. Stop it. |
 | Collector `password authentication failed` but the backend works | A symbol in the password is not URL-encoded in `COLLECTOR_DATABASE_URL`. |
-| `Bind for 0.0.0.0:8082 failed: port is already allocated` | Another program or container uses that port. Find it with `sudo ss -ltnp | grep :8082` and `docker ps --format '{{.Names}} {{.Ports}}'`, then pick a free port in `BACKEND_BIND` / `FRONTEND_BIND`. |
+| `Bind for 0.0.0.0:8084 failed: port is already allocated` | Another program or container uses that port. Find it with `sudo ss -ltnp | grep :8084` and `docker ps --format '{{.Names}} {{.Ports}}'`, then pick a free port in `BACKEND_BIND` / `FRONTEND_BIND`. |
 | Web app shows "Couldn't load" everywhere | Look at `docker compose logs backend`. The web app only forwards `/api` to the backend. |
 | Settings asks for a key | Enter `ADMIN_KEY` from `.env`. The browser keeps it until the tab is closed. |
 | Build stops with `Killed` | Not enough memory to build the backend. Add swap: `sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`. |
