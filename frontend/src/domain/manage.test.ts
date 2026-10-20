@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ChartStatus, EventRules, ManagedCountry, ManagedGenre, Tracking } from '@/api/manageTypes';
 import {
-  collectorHealth, countrySwitchImpact, parseReasons, previewTracking, sameRules, targetCharts, validateCountry,
-  validateRules, validateTracking, type TrackingDraft,
+  collectorHealth, countrySwitchImpact, groupCategories, parseReasons, previewCategory, sameRules, targetCharts,
+  validateCategory, validateCountry, validateRules, type CategoryDraft,
 } from './manage';
 
 const country = (code: string, enabled = true): ManagedCountry => ({ code, name: code.toUpperCase(), enabled, activeCharts: 0 });
@@ -12,8 +12,8 @@ const tracking = (over: Partial<Tracking> = {}): Tracking => ({
   id: 1, genreId: 7006, genreName: 'Casino', chartType: 'TOP_FREE', depth: 200, intervalMinutes: 720,
   allCountries: false, active: true, countries: [{ code: 'ph', active: true }], targetCharts: 1, ...over,
 });
-const draft = (over: Partial<TrackingDraft> = {}): TrackingDraft => ({
-  genreId: 7006, chartType: 'TOP_FREE', depth: 200, intervalMinutes: 720, allCountries: false, active: true,
+const draft = (over: Partial<CategoryDraft> = {}): CategoryDraft => ({
+  genreId: 7006, enabled: true, chartTypes: ['TOP_FREE'], depth: 200, intervalMinutes: 720, allCountries: false,
   countries: ['ph'], ...over,
 });
 const chartStatus = (over: Partial<ChartStatus> = {}): ChartStatus => ({
@@ -38,12 +38,30 @@ describe('target charts', () => {
       .toEqual(['ph', 'gb']);
   });
 
-  it('explains why a tracking row collects nothing', () => {
-    expect(previewTracking(draft(), countries, genres)).toEqual({ charts: ['ph'], blockers: [] });
-    expect(previewTracking(draft({ active: false }), countries, genres).blockers).toEqual(['inactive']);
-    expect(previewTracking(draft({ genreId: 7005 }), countries, genres).blockers).toEqual(['genreOff']);
-    expect(previewTracking(draft({ countries: [] }), countries, genres).blockers).toEqual(['noCountries']);
-    expect(previewTracking(draft({ countries: ['us'] }), countries, genres).blockers).toEqual(['countriesOff']);
+  it('explains why a category collects nothing', () => {
+    expect(previewCategory(draft(), countries, genres)).toEqual({ countries: ['ph'], charts: 1, blockers: [] });
+    expect(previewCategory(draft({ chartTypes: ['TOP_FREE', 'TOP_PAID'], allCountries: true }), countries, genres))
+      .toEqual({ countries: ['ph', 'gb'], charts: 4, blockers: [] });
+    expect(previewCategory(draft({ enabled: false }), countries, genres).blockers).toEqual(['genreOff']);
+    expect(previewCategory(draft({ genreId: 7004 }), countries, genres).blockers).toEqual(['genreGone']);
+    expect(previewCategory(draft({ chartTypes: [] }), countries, genres).blockers).toEqual(['noChartType']);
+    expect(previewCategory(draft({ countries: [] }), countries, genres).blockers).toEqual(['noCountries']);
+    expect(previewCategory(draft({ countries: ['us'] }), countries, genres).blockers).toEqual(['countriesOff']);
+  });
+
+  it('shows each category once, with the settings its chart types share', () => {
+    const rows = [
+      tracking({ id: 2, chartType: 'TOP_PAID', active: false, countries: [{ code: 'gb', active: true }], targetCharts: 0 }),
+      tracking(),
+      tracking({ id: 3, genreId: 7005, genreName: 'Card' }),
+    ];
+    const [casino, card] = groupCategories(rows, [genre(7006, { name: 'Casino' }), genre(7005, { name: 'Card', enabled: false })]);
+    expect(casino).toMatchObject({
+      genreId: 7006, enabled: true, chartTypes: ['TOP_FREE'], depth: 200, intervalMinutes: 720,
+      countries: ['gb', 'ph'], mixed: true, targetCharts: 1,
+    });
+    expect(casino!.rows.map((r) => r.chartType)).toEqual(['TOP_FREE', 'TOP_PAID']);
+    expect(card).toMatchObject({ genreId: 7005, enabled: false, mixed: false });   // switched-off categories last
   });
 
   it('counts the charts a country switch starts or stops', () => {
@@ -60,12 +78,14 @@ describe('validation', () => {
     expect(validateCountry({ code: 'jp', name: 'Japan' }, [])).toEqual({});
   });
 
-  it('checks a tracking row', () => {
-    const existing = [tracking()];
-    expect(validateTracking(draft(), existing)).toEqual({ genreId: 'manage.error.trackingExists' });
-    expect(validateTracking(draft(), existing, 1)).toEqual({});                     // editing itself
-    expect(validateTracking(draft({ chartType: 'TOP_PAID', depth: 0, intervalMinutes: 2000 }), existing))
-      .toEqual({ depth: 'manage.error.depth', intervalMinutes: 'manage.error.interval' });
+  it('checks a new category', () => {
+    const existing = groupCategories([tracking()], [genre(7006)]);
+    expect(validateCategory(draft(), existing)).toEqual({ genreId: 'manage.error.categoryExists' });
+    expect(validateCategory(draft({ genreId: 7005 }), existing)).toEqual({});
+    expect(validateCategory(draft({ genreId: null, chartTypes: [], depth: 0, intervalMinutes: 2000 }), existing)).toEqual({
+      genreId: 'manage.error.required', chartTypes: 'manage.error.chartTypes',
+      depth: 'manage.error.depth', intervalMinutes: 'manage.error.interval',
+    });
   });
 
   it('checks event rules like the backend', () => {

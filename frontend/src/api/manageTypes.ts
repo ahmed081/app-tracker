@@ -98,21 +98,14 @@ export interface CountryCreate {
   enabled: boolean;
 }
 
-export interface TrackingCreate {
-  genreId: number;
-  chartType: ChartType;
-  depth: number;
-  intervalMinutes: number;
-  allCountries: boolean;
-  active: boolean;
-  countries: string[];
-}
-
-export interface TrackingUpdate {
-  depth?: number;
+/** A whole category at once (PUT /categories/{genreId}). Left out = unchanged. */
+export interface CategoryUpdate {
+  enabled?: boolean;           // the category's switch (genre.enabled)
+  chartTypes?: ChartType[];    // tracked chart types; missing rows are created, the others switched off
+  depth?: number;              // shared by all its chart types
   intervalMinutes?: number;
   allCountries?: boolean;
-  active?: boolean;
+  countries?: string[];        // the others are switched off
 }
 
 export interface MetadataRunSummary {

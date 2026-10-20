@@ -13,10 +13,7 @@ const CONFIG: ResourceName[] = ['manageCountries', 'manageGenres', 'manageTracki
 export const INVALIDATES: Record<MutationName, ResourceName[]> = {
   addCountry: CONFIG,
   updateCountry: CONFIG,
-  updateGenre: CONFIG,
-  addTracking: CONFIG,
-  updateTracking: CONFIG,
-  setTrackingCountry: CONFIG,
+  saveCategory: CONFIG,
   saveRules: ['manageRules'],
   resetRules: ['manageRules'],
   processEvents: ['manageStatus'],

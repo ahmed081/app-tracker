@@ -1,6 +1,7 @@
 package com.apptracker.manage;
 
 import com.apptracker.events.EventProcessor;
+import com.apptracker.manage.ManageModel.CategoryUpdate;
 import com.apptracker.manage.ManageModel.Country;
 import com.apptracker.manage.ManageModel.CountryCreate;
 import com.apptracker.manage.ManageModel.CountryUpdate;
@@ -97,6 +98,15 @@ public class ManageController {
     public Tracking setTrackingCountry(@PathVariable long id, @PathVariable String code,
                                        @RequestBody TrackingCountryUpdate body) {
         return service.setTrackingCountry(id, code, body.active());
+    }
+
+    /**
+     * Adds a category or changes one: its switch, its chart types and the settings
+     * shared by them. Returns the category's tracking rows.
+     */
+    @PutMapping("/categories/{genreId}")
+    public List<Tracking> saveCategory(@PathVariable int genreId, @RequestBody CategoryUpdate body) {
+        return service.saveCategory(genreId, body);
     }
 
     @GetMapping("/rules")

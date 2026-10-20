@@ -214,6 +214,50 @@ export function handleManage(path: string, method: string, body: Json, charts: J
     return ok(trackingOut(t));
   }
 
+  if ((m = p.match(/^\/categories\/(\d+)$/)) && method === 'PUT') {
+    const genreId = Number(m[1]);
+    const g = state.genres.find((x) => x.id === genreId);
+    if (!g) return problem(404, `No category ${genreId}`);
+    const rows = state.tracking.filter((t) => t.genreId === genreId);
+    const errors: Record<string, string> = {};
+    const types: string[] | undefined = body.chartTypes;
+    if (types && !types.every((t) => CHART_TYPES.includes(t))) errors.chartTypes = `Among ${CHART_TYPES}`;
+    if (rows.length === 0 && !types?.length) errors.chartTypes = 'Pick at least one chart';
+    if (rows.length === 0 && !g.availableOnApple) errors.genreId = 'Apple no longer lists this category';
+    const depth = body.depth ?? rows[0]?.depth ?? 200;
+    const interval = body.intervalMinutes ?? rows[0]?.intervalMinutes ?? 720;
+    if (!(depth >= 1 && depth <= 200)) errors.depth = 'Must be between 1 and 200';
+    if (!(interval >= 5 && interval <= 1440)) errors.intervalMinutes = 'Must be between 5 and 1440';
+    const unknown = (body.countries ?? []).filter((c: string) => !state.countries.some((x) => x.code === c));
+    if (unknown.length) errors.countries = `Unknown countries ${unknown}`;
+    if (Object.keys(errors).length) return invalid(errors);
+
+    if (body.enabled != null) g.enabled = Boolean(body.enabled);
+    const countries: string[] = body.countries
+      ?? [...new Set(rows.flatMap((r) => r.countries.filter((c: Json) => c.active).map((c: Json) => c.code)))];
+    for (const t of rows) {
+      for (const k of ['depth', 'intervalMinutes', 'allCountries']) if (body[k] != null) t[k] = body[k];
+      if (body.countries) {
+        for (const tc of t.countries) tc.active = countries.includes(tc.code);
+        for (const code of countries) if (!t.countries.some((tc: Json) => tc.code === code)) t.countries.push({ code, active: true });
+      }
+    }
+    if (types) {
+      for (const type of CHART_TYPES) {
+        const row = rows.find((r) => r.chartType === type);
+        if (row) row.active = types.includes(type);
+        else if (types.includes(type)) {
+          state.tracking.push({
+            id: state.nextTrackingId++, genreId, chartType: type, depth, intervalMinutes: interval,
+            allCountries: body.allCountries ?? rows[0]?.allCountries ?? false, active: true,
+            countries: countries.map((code) => ({ code, active: true })),
+          });
+        }
+      }
+    }
+    return ok(state.tracking.filter((t) => t.genreId === genreId).map(trackingOut));
+  }
+
   if (p === '/rules' && method === 'GET') return ok(rulesOut());
   if (p === '/rules' && method === 'PUT') {
     const errors = validateRules(body);

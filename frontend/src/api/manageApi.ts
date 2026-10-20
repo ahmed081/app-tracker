@@ -2,8 +2,8 @@
 // Reads go through the shared cache (useResource); writes through useMutation.
 import { getJson, sendJson } from './http';
 import type {
-  CountryCreate, EventRules, ManagedCountry, ManagedGenre, MetadataRunSummary, RebuildState, RulesResponse,
-  StatusResponse, Tracking, TrackingCreate, TrackingUpdate,
+  CategoryUpdate, CountryCreate, EventRules, ManagedCountry, ManagedGenre, MetadataRunSummary, RebuildState,
+  RulesResponse, StatusResponse, Tracking,
 } from './manageTypes';
 
 const BASE = '/api/manage';
@@ -21,15 +21,10 @@ export const manageWrites = {
   addCountry: (p: CountryCreate) => sendJson<ManagedCountry>('POST', `${BASE}/countries`, p),
   updateCountry: (p: { code: string; name?: string; enabled?: boolean }) =>
     sendJson<ManagedCountry>('PATCH', `${BASE}/countries/${encodeURIComponent(p.code)}`, { name: p.name, enabled: p.enabled }),
-  updateGenre: (p: { id: number; enabled: boolean }) =>
-    sendJson<ManagedGenre>('PATCH', `${BASE}/genres/${p.id}`, { enabled: p.enabled }),
-  addTracking: (p: TrackingCreate) => sendJson<Tracking>('POST', `${BASE}/tracking`, p),
-  updateTracking: (p: { id: number } & TrackingUpdate) => {
-    const { id, ...body } = p;
-    return sendJson<Tracking>('PATCH', `${BASE}/tracking/${id}`, body);
+  saveCategory: (p: { genreId: number } & CategoryUpdate) => {
+    const { genreId, ...body } = p;
+    return sendJson<Tracking[]>('PUT', `${BASE}/categories/${genreId}`, body);
   },
-  setTrackingCountry: (p: { id: number; code: string; active: boolean }) =>
-    sendJson<Tracking>('PUT', `${BASE}/tracking/${p.id}/countries/${encodeURIComponent(p.code)}`, { active: p.active }),
   saveRules: (p: EventRules) => sendJson<RulesResponse>('PUT', `${BASE}/rules`, p),
   resetRules: (_p: NoParams) => sendJson<RulesResponse>('DELETE', `${BASE}/rules`),
   processEvents: (_p: NoParams) => sendJson<{ processedSnapshots: number }>('POST', `${BASE}/actions/process-events`),

@@ -2,6 +2,7 @@ package com.apptracker.manage;
 
 import com.apptracker.api.NotFoundException;
 import com.apptracker.config.AppProperties;
+import com.apptracker.manage.ManageModel.CategoryUpdate;
 import com.apptracker.manage.ManageModel.Country;
 import com.apptracker.manage.ManageModel.CountryCreate;
 import com.apptracker.manage.ManageModel.CountryUpdate;
@@ -9,6 +10,7 @@ import com.apptracker.manage.ManageModel.Genre;
 import com.apptracker.manage.ManageModel.Rules;
 import com.apptracker.manage.ManageModel.Status;
 import com.apptracker.manage.ManageModel.Tracking;
+import com.apptracker.manage.ManageModel.TrackingCountry;
 import com.apptracker.manage.ManageModel.TrackingCreate;
 import com.apptracker.manage.ManageModel.TrackingUpdate;
 import org.springframework.stereotype.Service;
@@ -16,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -29,7 +33,7 @@ import java.util.regex.Pattern;
 @Service
 public class ManageService {
 
-    static final Set<String> CHART_TYPES = Set.of("TOP_FREE", "TOP_PAID", "TOP_GROSSING");
+    static final List<String> CHART_TYPES = List.of("TOP_FREE", "TOP_PAID", "TOP_GROSSING");
     private static final Pattern COUNTRY_CODE = Pattern.compile("[a-z]{2}");
 
     private final ManageRepository repo;
@@ -139,6 +143,72 @@ public class ManageService {
         if (repo.country(country).isEmpty()) throw new NotFoundException("No country " + country);
         repo.setTrackingCountry(id, country, active);
         return repo.tracking(id).orElseThrow();
+    }
+
+    // ------------------------------------------------------------ categories
+
+    /**
+     * Adds or changes a category in one transaction. Chart types left out of
+     * {@code chartTypes} and countries left out of {@code countries} are
+     * switched off, never deleted. New rows take the category's shared settings.
+     */
+    @Transactional
+    public List<Tracking> saveCategory(int genreId, CategoryUpdate in) {
+        Genre genre = repo.genre(genreId).orElseThrow(() -> new NotFoundException("No category " + genreId));
+        List<Tracking> rows = categoryRows(genreId);
+        Map<String, String> errors = new LinkedHashMap<>();
+        List<String> types = in.chartTypes();
+        if (types != null && !CHART_TYPES.containsAll(types)) errors.put("chartTypes", "Among " + CHART_TYPES);
+        if (rows.isEmpty() && (types == null || types.isEmpty())) errors.put("chartTypes", "Pick at least one chart");
+        if (rows.isEmpty() && !genre.availableOnApple()) errors.put("genreId", "Apple no longer lists this category");
+        Tracking first = rows.isEmpty() ? null : rows.get(0);
+        int depth = in.depth() != null ? in.depth() : first != null ? first.depth() : 200;
+        int interval = in.intervalMinutes() != null ? in.intervalMinutes() : first != null ? first.intervalMinutes() : 720;
+        checkTuning(depth, interval, errors);
+        boolean allCountries = in.allCountries() != null ? in.allCountries() : first != null && first.allCountries();
+        if (in.countries() != null) {
+            Set<String> known = Set.copyOf(repo.countries().stream().map(Country::code).toList());
+            List<String> unknown = in.countries().stream().filter(c -> !known.contains(c)).toList();
+            if (!unknown.isEmpty()) errors.put("countries", "Unknown countries " + unknown);
+        }
+        if (!errors.isEmpty()) throw new ValidationException(errors);
+
+        if (in.enabled() != null) repo.updateGenre(genreId, in.enabled());
+
+        // New rows get the given countries, or those the category already has.
+        Set<String> countries = new LinkedHashSet<>();
+        if (in.countries() != null) countries.addAll(in.countries());
+        else rows.forEach(r -> r.countries().stream().filter(TrackingCountry::active).forEach(c -> countries.add(c.code())));
+
+        if (types != null) {
+            for (String type : CHART_TYPES) {
+                Optional<Tracking> row = rows.stream().filter(r -> r.chartType().equals(type)).findFirst();
+                boolean wanted = types.contains(type);
+                if (row.isEmpty() && wanted) {
+                    long id = repo.insertTracking(genreId, type, depth, interval, allCountries, true)
+                            .orElseThrow(() -> new ConflictException("This category and chart type are already tracked"));
+                    for (String country : countries) repo.setTrackingCountry(id, country, true);
+                } else if (row.isPresent() && row.get().active() != wanted) {
+                    repo.updateTracking(row.get().id(), null, null, null, wanted);
+                }
+            }
+        }
+        for (Tracking row : rows) {
+            if (in.depth() != null || in.intervalMinutes() != null || in.allCountries() != null) {
+                repo.updateTracking(row.id(), in.depth(), in.intervalMinutes(), in.allCountries(), null);
+            }
+            if (in.countries() != null) {
+                for (String country : countries) repo.setTrackingCountry(row.id(), country, true);
+                for (TrackingCountry tc : row.countries()) {
+                    if (tc.active() && !countries.contains(tc.code())) repo.setTrackingCountry(row.id(), tc.code(), false);
+                }
+            }
+        }
+        return categoryRows(genreId);
+    }
+
+    private List<Tracking> categoryRows(int genreId) {
+        return repo.trackings().stream().filter(t -> t.genreId() == genreId).toList();
     }
 
     /** Same limits as the database CHECKs. */

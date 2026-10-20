@@ -154,9 +154,10 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `metadata`: Lookup client, parser, scheduled refresh every 5 minutes.
 - `events`: the engine, the processor (runs every minute) and its repository.
 - `api`: the public read API. Charts: `/api/charts/{country}/{genreId}/{type}/{ranking|headlines|movers|events|bump}`. Apps: `/api/apps/{id}[/history|/events|/versions|/ratings]`, `/api/search`, `/api/admin/...`.
-- `manage`: the Settings API, `/api/manage/{countries,genres,tracking,rules,status,actions/*}`: `ManageController`, `ManageService` (validation), `ManageRepository`, `RulesStore`, `EventRules`, `RebuildJob`.
+- `manage`: the Settings API, `/api/manage/{countries,genres,tracking,categories/{genreId},rules,status,actions/*}`: `ManageController`, `ManageService` (validation), `ManageRepository`, `RulesStore`, `EventRules`, `RebuildJob`.
   - Validation errors return 400 with `{"errors": {field: message}}`.
   - Conflicts return 409.
+  - `PUT /categories/{genreId}` saves a whole category in one transaction: its switch (`genre.enabled`), its chart types (missing rows created, the others switched off) and the depth, interval and countries shared by its chart types. The Tracking page uses only this write.
   - Rebuilding all events runs on a background thread; its progress appears in `/status`.
 
 **Access:**
@@ -214,6 +215,7 @@ With `backend/db/management.sql`, `app_backend` can also:
   - `ui/`: Panel, SegmentedControl, Select, Switch, Button, Field/TextInput/ToggleChip, Notice, States, RankDelta, badges.
   - `app/`, `charts/` and `layout/`.
 - `pages/`: Overview, Ranking, Movers, App, Search, NotFound, and `settings/` (Countries, Tracking, Rules, Status, plus the layout).
+  - Settings → Tracking lists each category once (`domain/manage.ts → groupCategories`), with search, an on/off filter and an "Add category" form that searches Apple's genre list.
 
 **Conventions:**
 - Use logical CSS properties (start/end) so the layout mirrors in right-to-left.
@@ -230,7 +232,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `npm run dev:mock` serves a fake API from `mock/` (recorded fixtures plus an in-memory fake of `/api/manage` in `mock/mock-manage-api.ts`). It sets the variable the Unix way: on Windows, run it from Git Bash.
 - `npm run dev` proxies `/api` to `localhost:8081`.
 
-**Tests:** 33 tests (`npm test`); type-check and build with `npm run build`.
+**Tests:** 37 tests (`npm test`); type-check and build with `npm run build`.
 
 ## 8. Run it
 

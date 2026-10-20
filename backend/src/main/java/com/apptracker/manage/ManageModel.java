@@ -66,6 +66,22 @@ public final class ManageModel {
     public record TrackingCountryUpdate(Boolean active) {
     }
 
+    /**
+     * A whole category at once: its switch (genre.enabled), which chart types are
+     * tracked, and the settings shared by all its chart types.
+     *
+     * @param chartTypes the chart types to track; missing rows are created, the others switched off
+     * @param countries  country codes to track in; the others are switched off
+     */
+    public record CategoryUpdate(
+            Boolean enabled,
+            List<String> chartTypes,
+            Integer depth,
+            Integer intervalMinutes,
+            Boolean allCountries,
+            List<String> countries) {
+    }
+
     // ----------------------------------------------------------------- rules
 
     /**

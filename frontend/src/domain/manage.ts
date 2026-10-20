@@ -38,40 +38,84 @@ export function targetCharts(countries: ManagedCountry[], genres: ManagedGenre[]
     .map((c) => ({ trackingId: t.id, country: c.code, genreId: t.genreId, chartType: t.chartType })));
 }
 
-/** Why a tracking row collects nothing (empty when it collects at least one chart). */
-export type Blocker = 'inactive' | 'genreOff' | 'genreGone' | 'noCountries' | 'countriesOff';
+// --------------------------------------------------------------- categories
+// The Settings page shows one entry per category; its tracking rows (one per
+// chart type) share their settings.
 
-export interface TrackingDraft {
+export interface Category {
+  genreId: number;
+  name: string;
+  enabled: boolean;              // genre.enabled: the category's switch
+  availableOnApple: boolean;
+  rows: Tracking[];              // in CHART_TYPES order
+  chartTypes: ChartType[];       // tracked (active) chart types
+  depth: number | null;          // null: the chart types differ
+  intervalMinutes: number | null;
+  allCountries: boolean | null;
+  countries: string[];           // active in at least one chart type
+  mixed: boolean;                // some setting differs between chart types
+  targetCharts: number;
+}
+
+/** Tracked categories (those with a tracking row), switched-on ones first, then by name. */
+export function groupCategories(trackings: Tracking[], genres: ManagedGenre[]): Category[] {
+  const byGenre = new Map<number, Tracking[]>();
+  for (const t of trackings) byGenre.set(t.genreId, [...(byGenre.get(t.genreId) ?? []), t]);
+  const same = <T>(values: T[]): T | null => (values.every((v) => v === values[0]) ? values[0] ?? null : null);
+  return [...byGenre.entries()].map(([genreId, list]): Category => {
+    const rows = [...list].sort((a, b) => CHART_TYPES.indexOf(a.chartType) - CHART_TYPES.indexOf(b.chartType));
+    const genre = genres.find((g) => g.id === genreId);
+    const countrySets = rows.map((r) => r.countries.filter((c) => c.active).map((c) => c.code).sort().join(','));
+    const depth = same(rows.map((r) => r.depth));
+    const intervalMinutes = same(rows.map((r) => r.intervalMinutes));
+    const allCountries = same(rows.map((r) => r.allCountries));
+    return {
+      genreId,
+      name: genre?.name ?? rows[0]!.genreName,
+      enabled: genre?.enabled ?? false,
+      availableOnApple: genre?.availableOnApple ?? false,
+      rows,
+      chartTypes: rows.filter((r) => r.active).map((r) => r.chartType),
+      depth,
+      intervalMinutes,
+      allCountries,
+      countries: [...new Set(rows.flatMap((r) => r.countries.filter((c) => c.active).map((c) => c.code)))].sort(),
+      mixed: depth === null || intervalMinutes === null || allCountries === null || same(countrySets) === null,
+      targetCharts: rows.reduce((n, r) => n + r.targetCharts, 0),
+    };
+  }).sort((a, b) => Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name));
+}
+
+/** Why a category collects nothing (empty when it collects at least one chart). */
+export type Blocker = 'genreOff' | 'genreGone' | 'noChartType' | 'noCountries' | 'countriesOff';
+
+/** A category being added or edited. */
+export interface CategoryDraft {
   genreId: number | null;
-  chartType: ChartType;
+  enabled: boolean;
+  chartTypes: ChartType[];
   depth: number;
   intervalMinutes: number;
   allCountries: boolean;
-  active: boolean;
   countries: string[];
 }
 
-/** What a tracking row (new or edited) would collect, and why not when nothing. */
-export function previewTracking(draft: TrackingDraft, countries: ManagedCountry[], genres: ManagedGenre[]):
-  { charts: string[]; blockers: Blocker[] } {
+/** What a category would collect (country codes, chart count), and why not when nothing. */
+export function previewCategory(draft: CategoryDraft, countries: ManagedCountry[], genres: ManagedGenre[]):
+  { countries: string[]; charts: number; blockers: Blocker[] } {
   const genre = genres.find((g) => g.id === draft.genreId);
-  const tracking: Tracking = {
-    id: -1, genreId: draft.genreId ?? -1, genreName: genre?.name ?? '', chartType: draft.chartType,
-    depth: draft.depth, intervalMinutes: draft.intervalMinutes, allCountries: draft.allCountries, active: draft.active,
-    countries: draft.countries.map((code) => ({ code, active: true })), targetCharts: 0,
-  };
-  const charts = countries.filter((c) => isCollected(c, genre, tracking)).map((c) => c.code);
+  const collectable = draft.enabled && (genre?.availableOnApple ?? false);
+  const where = countries.filter((c) => c.enabled && (draft.allCountries || draft.countries.includes(c.code))).map((c) => c.code);
+  const charts = collectable ? where.length * draft.chartTypes.length : 0;
   const blockers: Blocker[] = [];
-  if (charts.length === 0) {
-    if (!draft.active) blockers.push('inactive');
+  if (charts === 0) {
     if (genre && !genre.availableOnApple) blockers.push('genreGone');
-    else if (genre && !genre.enabled) blockers.push('genreOff');
+    else if (!draft.enabled) blockers.push('genreOff');
+    if (draft.chartTypes.length === 0) blockers.push('noChartType');
     if (!draft.allCountries && draft.countries.length === 0) blockers.push('noCountries');
-    else if (!countries.some((c) => c.enabled && (draft.allCountries || draft.countries.includes(c.code)))) {
-      blockers.push('countriesOff');
-    }
+    else if (where.length === 0) blockers.push('countriesOff');
   }
-  return { charts, blockers };
+  return { countries: collectable ? where : [], charts, blockers };
 }
 
 /** How many charts start or stop if a country is switched to `enabled`. */
@@ -80,15 +124,6 @@ export function countrySwitchImpact(code: string, enabled: boolean, countries: M
   const changed = countries.map((c) => (c.code === code ? { ...c, enabled } : c));
   const before = targetCharts(countries, genres, trackings).filter((t) => t.country === code).length;
   const after = targetCharts(changed, genres, trackings).filter((t) => t.country === code).length;
-  return Math.abs(after - before);
-}
-
-/** How many charts start or stop if a genre is switched to `enabled`. */
-export function genreSwitchImpact(id: number, enabled: boolean, countries: ManagedCountry[], genres: ManagedGenre[],
-  trackings: Tracking[]): number {
-  const changed = genres.map((g) => (g.id === id ? { ...g, enabled } : g));
-  const before = targetCharts(countries, genres, trackings).filter((t) => t.genreId === id).length;
-  const after = targetCharts(countries, changed, trackings).filter((t) => t.genreId === id).length;
   return Math.abs(after - before);
 }
 
@@ -107,12 +142,11 @@ export function validateCountry(draft: { code: string; name: string }, existing:
   return errors;
 }
 
-export function validateTracking(draft: TrackingDraft, trackings: Tracking[], editingId?: number): FieldErrors {
+export function validateCategory(draft: CategoryDraft, categories: Category[]): FieldErrors {
   const errors: FieldErrors = {};
   if (draft.genreId == null) errors.genreId = 'manage.error.required';
-  else if (trackings.some((t) => t.id !== editingId && t.genreId === draft.genreId && t.chartType === draft.chartType)) {
-    errors.genreId = 'manage.error.trackingExists';
-  }
+  else if (categories.some((c) => c.genreId === draft.genreId)) errors.genreId = 'manage.error.categoryExists';
+  if (draft.chartTypes.length === 0) errors.chartTypes = 'manage.error.chartTypes';
   if (!Number.isInteger(draft.depth) || draft.depth < 1 || draft.depth > 200) errors.depth = 'manage.error.depth';
   if (!Number.isInteger(draft.intervalMinutes) || draft.intervalMinutes < 5 || draft.intervalMinutes > 1440) {
     errors.intervalMinutes = 'manage.error.interval';
