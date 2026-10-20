@@ -236,7 +236,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 
 ```bash
 cp .env.example .env              # database logins (COLLECTOR_DATABASE_URL, BACKEND_JDBC_URL/USER/PASSWORD), ADMIN_KEY, USER_AGENT
-docker compose up -d --build      # collector, backend (BACKEND_BIND, default 127.0.0.1:8082), frontend (FRONTEND_BIND, default 127.0.0.1:8083)
+docker compose up -d --build      # collector, backend (BACKEND_BIND, default 127.0.0.1:8082), frontend (FRONTEND_BIND, default 127.0.0.1:3001)
 docker compose logs -f collector backend
 ```
 

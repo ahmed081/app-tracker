@@ -6,12 +6,12 @@ Three containers, built from this repository:
 |---|---|---|---|
 | `collector` | `app-tracker-collector` | nothing | Reads the Apple charts, writes the history |
 | `backend` | `app-tracker-backend` | `BACKEND_BIND` (default `127.0.0.1:8082`, server only) | API, event engine, app details |
-| `frontend` | `app-tracker-frontend` | `FRONTEND_BIND` (default `127.0.0.1:8083`) | The web app; Nginx forwards `/api` to the backend |
+| `frontend` | `app-tracker-frontend` | `FRONTEND_BIND` (default `127.0.0.1:3001`) | The web app; Nginx forwards `/api` to the backend |
 
 The database is **not** in a container by default. All three use the PostgreSQL named in `.env`, which is the existing `app_tracker_db` today. A fourth container with a new, empty database is available with `--profile local-db` (section 8).
 
 ```
-browser ──HTTPS──► Caddy (host, :443) ──► frontend :8083 ──/api──► backend :8082 ──┐
+browser ──HTTPS──► Caddy (host, :443) ──► frontend :3001 ──/api──► backend :8082 ──┐
                                                                   collector ───────┴──► PostgreSQL
 ```
 
@@ -77,7 +77,7 @@ ssh user@SERVER 'chmod 600 ~/app-tracker/.env'
 | `USER_AGENT` | Sent to Apple with every request. Keep a contact address in it. |
 | `CORS_ORIGINS` | Only needed if a web app on another address calls the API directly. |
 | `BACKEND_JAVA_OPTS` | Backend memory, `-Xmx512m` by default. |
-| `FRONTEND_BIND` | `127.0.0.1:8083` behind Caddy (section 6), or `8083` (or `80`) for plain HTTP without a domain. |
+| `FRONTEND_BIND` | `127.0.0.1:3001` behind Caddy (section 6), or `3001` (or `80`) for plain HTTP without a domain. |
 | `BACKEND_BIND` | `127.0.0.1:8082`: the API on the server only, for checks. Inside Docker the backend always uses 8080. |
 | `POSTGRES_PASSWORD`, `COLLECTOR_PASSWORD`, `BACKEND_PASSWORD` | Only for `--profile local-db`. |
 
@@ -100,7 +100,7 @@ docker compose logs -f collector backend
 **Check the services:**
 ```bash
 curl -s localhost:8082/actuator/health          # {"status":"UP"}
-curl -s localhost:8083/api/charts | head -c 300 # the API, through the web app's Nginx
+curl -s localhost:3001/api/charts | head -c 300 # the API, through the web app's Nginx
 ```
 
 **Expected logs:**
@@ -114,7 +114,7 @@ curl -s localhost:8083/api/charts | head -c 300 # the API, through the web app's
 ### With a domain and HTTPS (recommended)
 
 1. Point the domain's DNS `A` record at the server's IP.
-2. Keep `FRONTEND_BIND=127.0.0.1:8083` in `.env`.
+2. Keep `FRONTEND_BIND=127.0.0.1:3001` in `.env`.
 3. Install Caddy on the server itself, not in Docker. Caddy fetches the certificate and renews it automatically:
 
 ```bash
@@ -126,7 +126,7 @@ sudo apt update && sudo apt install -y caddy
 sudo tee /etc/caddy/Caddyfile >/dev/null <<'EOF'
 rankline.example.com {
     encode gzip
-    reverse_proxy 127.0.0.1:8083
+    reverse_proxy 127.0.0.1:3001
 }
 EOF
 sudo systemctl reload caddy
@@ -136,7 +136,7 @@ Open `https://rankline.example.com`.
 
 ### Without a domain (plain HTTP, for a quick test)
 
-Set `FRONTEND_BIND=8083` in `.env`, run `docker compose up -d`, and open `http://SERVER-IP:8083` (allow it in the firewall: `sudo ufw allow 8083/tcp`). The admin key travels in clear text over HTTP, so switch to a domain before relying on it.
+Set `FRONTEND_BIND=3001` in `.env`, run `docker compose up -d`, and open `http://SERVER-IP:3001` (allow it in the firewall: `sudo ufw allow 3001/tcp`). The admin key travels in clear text over HTTP, so switch to a domain before relying on it.
 
 ### Firewall
 
@@ -145,7 +145,7 @@ sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp
 sudo ufw enable
 ```
 
-Ports that Docker publishes skip `ufw`. That is why the backend and the web app listen on `127.0.0.1` only, unless you set `FRONTEND_BIND=8083` (or `80`).
+Ports that Docker publishes skip `ufw`. That is why the backend and the web app listen on `127.0.0.1` only, unless you set `FRONTEND_BIND=3001` (or `80`).
 
 ## 7. The database
 

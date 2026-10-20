@@ -82,7 +82,7 @@ services:
     environment:
       API_UPSTREAM: http://backend:8080
     ports:
-      - "${FRONTEND_BIND:-127.0.0.1:8083}:80"
+      - "${FRONTEND_BIND:-127.0.0.1:3001}:80"
 
   # One-off database dump to stdout (profile "tools"; see DEPLOY.md, backups):
   #   docker compose --profile tools run --rm -T backup > backups/db.dump
