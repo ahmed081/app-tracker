@@ -30,6 +30,10 @@ public final class EventEngine {
         this.config = config;
     }
 
+    public Config config() {
+        return config;
+    }
+
     public Result process(Input in) {
         final int depth = config.displayDepth();
         final boolean baseline = in.isBaseline();
@@ -100,7 +104,7 @@ public final class EventEngine {
                 }
             }
 
-            AppState state = nextState(old, appId, c, slot, in.intervalMinutes());
+            AppState state = nextState(old, appId, c, slot, in.recentSlots());
 
             if (!baseline && old != null && state.rising() != old.rising()) {
                 appEvents.add(event(appId, state.rising() ? EventType.RISING_STARTED : EventType.RISING_ENDED, null, p, c));
@@ -122,7 +126,7 @@ public final class EventEngine {
         return new Result(events, newStates, tierChanges, heldOverGap, coveredMinutes, gap);
     }
 
-    private AppState nextState(AppState old, long appId, Integer c, Instant slot, int intervalMinutes) {
+    private AppState nextState(AppState old, long appId, Integer c, Instant slot, List<Instant> recentSlots) {
         int depth = config.displayDepth();
         boolean inCur = c != null && c <= depth;
 
@@ -154,17 +158,33 @@ public final class EventEngine {
                 old == null ? slot : old.firstObservedAt(),
                 c != null ? slot : (old == null ? null : old.lastSeenAt()),
                 recent,
-                isRising(recent, intervalMinutes));
+                isRising(recent, recentSlots));
     }
 
     /**
-     * Rising: over the last {@code risingHours} (that many steps at the chart's interval),
-     * at least {@code risingGainPercent} of the steps were gains and the app gained at
-     * least {@code risingMinNetPlaces} places in total. Every rank in the window must be known.
+     * Rising: over the last {@code risingHours}, at least {@code risingGainPercent} of the
+     * steps were gains and the app gained at least {@code risingMinNetPlaces} places in total.
+     * Every rank in the window must be known.
+     *
+     * The window runs from the newest reading at or before "now - risingHours" to now, using
+     * the readings' real times, so it covers the same period after the chart's interval
+     * changes. At least 2 steps; when the remembered ranks cover less than the period
+     * (very short intervals), all of them.
      */
-    boolean isRising(List<Integer> recent, int intervalMinutes) {
-        int steps = config.risingSteps(intervalMinutes);
-        if (recent.size() < steps + 1) return false;
+    boolean isRising(List<Integer> recent, List<Instant> slots) {
+        int n = Math.min(recent.size(), slots.size());
+        if (n < 3) return false;
+        Instant now = slots.get(slots.size() - 1);
+        Instant cutoff = now.minus(Duration.ofHours(config.risingHours()));
+        int steps = -1;
+        for (int k = 2; k < n; k++) {
+            if (!slots.get(slots.size() - 1 - k).isAfter(cutoff)) {
+                steps = k;
+                break;
+            }
+        }
+        if (steps < 0 && n >= config.recentRanksKept()) steps = n - 1;
+        if (steps < 0) return false;    // less history than the period
         List<Integer> window = recent.subList(recent.size() - steps - 1, recent.size());
         if (window.stream().anyMatch(r -> r == null)) return false;
         int gains = 0;

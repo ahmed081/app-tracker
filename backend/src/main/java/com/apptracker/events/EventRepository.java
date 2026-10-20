@@ -13,7 +13,9 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +98,20 @@ public class EventRepository {
                 WHERE chart_id = :chart AND status = 'VALID' AND processed_at IS NOT NULL
                 """, Map.of("chart", chartId), (rs, i) -> instant(rs, "slot")).stream()
                 .filter(java.util.Objects::nonNull).findFirst();
+    }
+
+    /** Slots of the chart's processed VALID snapshots up to {@code slot}, plus {@code slot} itself; oldest first. */
+    public List<Instant> recentSlots(long chartId, Instant slot, int limit) {
+        List<Instant> out = new ArrayList<>(jdbc.query("""
+                SELECT slot_start FROM snapshot
+                WHERE chart_id = :chart AND status = 'VALID' AND slot_start <= :slot
+                  AND (processed_at IS NOT NULL OR slot_start = :slot)
+                ORDER BY slot_start DESC
+                LIMIT :limit
+                """, new MapSqlParameterSource("chart", chartId).addValue("slot", odt(slot)).addValue("limit", limit),
+                (rs, i) -> instant(rs, "slot_start")));
+        Collections.reverse(out);
+        return out;
     }
 
     public Map<Long, Integer> ranks(long snapshotId) {

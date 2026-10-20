@@ -36,4 +36,13 @@ public record TimeWindow(String label, int minutes) {
         if (minutes <= 31 * 24 * 60) return 6 * 60;       // a month: every 6 hours
         return 24 * 60;                                   // longer: daily
     }
+
+    /**
+     * The step of a graph: the requested one or the default, but never shorter
+     * than the chart's interval. Shorter steps leave empty buckets between
+     * readings, which graphs would show as the app being out of the chart.
+     */
+    public int stepMinutes(Integer requested, int chartIntervalMinutes) {
+        return Math.max(requested != null ? requested : defaultStepMinutes(), chartIntervalMinutes);
+    }
 }

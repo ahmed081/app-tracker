@@ -21,6 +21,15 @@ class ApiHelpersTest {
     }
 
     @Test
+    void stepIsNeverShorterThanTheChartInterval() {
+        TimeWindow week = TimeWindow.parse("7d", "24h");
+        assertEquals(60, week.stepMinutes(null, 60));
+        assertEquals(240, week.stepMinutes(null, 240));      // 4-hourly chart: no empty hourly buckets
+        assertEquals(240, week.stepMinutes(60, 240));
+        assertEquals(360, TimeWindow.parse("30d", "24h").stepMinutes(null, 240));
+    }
+
+    @Test
     void rejectsBadWindows() {
         for (String bad : new String[]{"x", "10", "-1d", "5q", "h"}) {
             boolean threw = false;

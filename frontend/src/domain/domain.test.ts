@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EventRow } from '@/api/types';
 import { chartKey, isPartialWindow, parseChartKey, pickDefaultChart } from './charts';
 import { eventMessage, eventTone } from './events';
-import { markerEvents, rankDomain, summarize, tierLines, timeTicks, withGaps } from './history';
+import { isolatedPoints, markerEvents, rankDomain, summarize, tierLines, timeTicks, withGaps } from './history';
 import { direction, isNoise, placesGained, tierOf } from './rank';
 
 const ev = (over: Partial<EventRow>): EventRow => ({
@@ -60,6 +60,12 @@ describe('history', () => {
   it('breaks the line only for long holes', () => {
     const data = withGaps([pt(0, 5), pt(1, 4), pt(3, 4), pt(8, 6)], 60);
     expect(data.map((d) => d.rank)).toEqual([5, 4, 4, null, 6]);   // 2h hole bridged, 5h hole broken
+  });
+
+  it('marks readings a line cannot show', () => {
+    const data = withGaps([pt(0, 5), pt(1, 4), pt(8, 6), pt(16, 7)], 60);
+    expect(data.map((d) => d.rank)).toEqual([5, 4, null, 6, null, 7]);
+    expect([...isolatedPoints(data)]).toEqual([3, 5]);
   });
 
   it('summarises a period', () => {

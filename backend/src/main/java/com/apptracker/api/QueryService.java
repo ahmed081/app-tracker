@@ -251,7 +251,7 @@ public class QueryService {
     // ------------------------------------------------------------------- bump
 
     public BumpResponse bump(ChartRow chart, TimeWindow window, int top, Integer stepMinutes) {
-        int step = stepMinutes != null ? stepMinutes : window.defaultStepMinutes();
+        int step = window.stepMinutes(stepMinutes, chart.chart().intervalMinutes());
         Optional<SnapRef> cur = repo.latest(chart.id());
         if (cur.isEmpty()) return new BumpResponse(chart.chart(), window.label(), step, List.of());
         SnapRef now = cur.get();

@@ -81,7 +81,7 @@ The defaults come from `application.yml`. The Settings menu can override the tie
 | `display-depth` | 25 | Chart size shown; entering/leaving it = NEW_ENTRY / LEFT_CHART |
 | `tiers` | 10, 5 | Lines that produce "entered/left the Top N" |
 | `big-move-places` | 5 | One-step move that counts as a big move |
-| `rising-hours` / `rising-gain-percent` / `rising-min-net-places` | 24 / 50 / 10 | Rising = over the last 24 hours, at least half of the readings are gains and 10 places net. Hours, so it means the same at any interval: 24 readings when hourly, 6 when every 4 hours |
+| `rising-hours` / `rising-gain-percent` / `rising-min-net-places` | 24 / 50 / 10 | Rising = over the last 24 hours, at least half of the readings are gains and 10 places net. Measured on the readings' real times, so it means the same at any interval, including right after the interval changes: 24 readings when hourly, 6 when every 4 hours |
 | `new-best-after-days` | 7 | No "new best" during the first week of a chart |
 | `gap-factor` | 3 | A step longer than 3 intervals is flagged as a gap |
 

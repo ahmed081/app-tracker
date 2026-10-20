@@ -16,7 +16,7 @@ public final class EngineModel {
      * @param displayDepth       chart size shown to users (Top 25); entering/leaving it = NEW_ENTRY/LEFT_CHART
      * @param tiers              tier lines that produce ENTERED_TOP_N / LEFT_TOP_N, e.g. [10, 5]
      * @param bigMovePlaces      a single-step move of at least this many places is a BIG_MOVE
-     * @param risingHours        period examined by the rising rule (turned into readings per chart interval)
+     * @param risingHours        period examined by the rising rule, measured on the readings' own times
      * @param risingGainPercent  share of the readings in that period that must be gains
      * @param risingMinNetPlaces minimum net places gained over the window
      * @param newBestAfterDays   NEW_BEST is suppressed this long after the chart's first snapshot
@@ -36,16 +36,6 @@ public final class EngineModel {
 
         public static Config defaults() {
             return new Config(25, List.of(10, 5), 5, 24, 50, 10, 7, 3, 25);
-        }
-
-        /**
-         * Readings-to-readings steps the rising rule examines at this interval: 24 hours
-         * is 24 steps when hourly, 6 when every 4 hours. At least 2, and no more than
-         * the ranks remembered per app allow.
-         */
-        public int risingSteps(int intervalMinutes) {
-            long steps = Math.round(risingHours * 60.0 / Math.max(1, intervalMinutes));
-            return (int) Math.max(2, Math.min(steps, recentRanksKept - 1));
         }
 
         /** Gains needed among {@code steps}: risingGainPercent of them, rounded up. */
@@ -69,6 +59,8 @@ public final class EngineModel {
      * @param previousSlot  slot of the previous VALID snapshot, or null for the first one
      * @param baselineSlot  slot of the chart's first VALID snapshot (equals slot for the first one)
      * @param states        current state of every app found in either snapshot (missing = never seen)
+     * @param recentSlots   slots of the chart's VALID snapshots up to and including this one, oldest
+     *                      first, at most recentRanksKept: the times of each app's recent ranks
      */
     public record Input(
             long snapshotId,
@@ -78,7 +70,8 @@ public final class EngineModel {
             Instant baselineSlot,
             Map<Long, Integer> previousRanks,
             Map<Long, Integer> currentRanks,
-            Map<Long, AppState> states) {
+            Map<Long, AppState> states,
+            List<Instant> recentSlots) {
 
         public boolean isBaseline() {
             return previousSlot == null;

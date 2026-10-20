@@ -98,7 +98,8 @@ public class EventProcessor {
         Map<Long, AppState> states = repo.states(chartId, appIds);
 
         Result r = engine.process(new Input(snap.id(), snap.slot(), intervalMinutes,
-                prev.map(SnapshotRef::slot).orElse(null), baseline, previousRanks, currentRanks, states));
+                prev.map(SnapshotRef::slot).orElse(null), baseline, previousRanks, currentRanks, states,
+                repo.recentSlots(chartId, snap.slot(), engine.config().recentRanksKept())));
 
         repo.replaceEvents(chartId, snap.id(), snap.slot(), r.coveredMinutes(), r.gap(), r.events(), replay);
         repo.saveStates(chartId, snap.id(), r.states().values());

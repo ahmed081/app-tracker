@@ -38,14 +38,11 @@ class EventRulesTest {
     }
 
     @Test
-    void risingPeriodBecomesReadingsPerInterval() {
-        EngineModel.Config c = EngineModel.Config.defaults();       // 24 hours, half of them gains
-        assertEquals(24, c.risingSteps(60));
+    void risingNeedsHalfOfTheStepsAsGains() {
+        EngineModel.Config c = EngineModel.Config.defaults();       // half of the steps, rounded up
         assertEquals(12, c.risingMinGains(24));
-        assertEquals(6, c.risingSteps(240));                         // every 4 hours
         assertEquals(3, c.risingMinGains(6));
-        assertEquals(2, c.risingSteps(1440));                        // daily: at least 2 steps
-        assertEquals(24, c.risingSteps(5));                          // capped by the ranks remembered
+        assertEquals(2, c.risingMinGains(3));
     }
 
     @Test

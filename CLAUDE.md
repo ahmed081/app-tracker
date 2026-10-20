@@ -124,7 +124,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - REACHED_NUMBER_ONE / LOST_NUMBER_ONE
 - NEW_BEST (low importance; suppressed for 7 days after the chart's first snapshot)
 - BIG_MOVE (5 or more places in one step)
-- RISING_STARTED / RISING_ENDED: over the last 24 hours (`rising-hours`, turned into readings at the chart's interval), at least 50% of the steps are gains (`rising-gain-percent`) and at least 10 places net
+- RISING_STARTED / RISING_ENDED: over the last 24 hours (`rising-hours`, measured on the readings' real times, so it holds when the interval changes), at least 50% of the steps are gains (`rising-gain-percent`) and at least 10 places net
 - MOVED_UP / MOVED_DOWN
 
 **Rules:**
@@ -132,6 +132,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - Display depth is 25.
 - Tier intervals are kept for 1, the configured tiers, and 25.
 - A step longer than 3× the interval is flagged as a gap.
+- Graphs (`/history`, `/bump`) never use a step shorter than the chart's interval, so the frontend's gap rule (a hole of more than 3 steps breaks the line) never mistakes the time between readings for the app leaving the chart. Lone points between two breaks are drawn as dots.
 
 **Where the rules come from:**
 - Defaults are in `application.yml → apptracker.events`.
@@ -166,7 +167,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `.env.example` ships with the key empty. Before the VPS is public, the owner should set it.
 
 **Tests:**
-- `EventEngineTest`, `LookupParserTest`, `ApiHelpersTest`, `EventRulesTest`: 26 tests (`mvn test`).
+- `EventEngineTest`, `LookupParserTest`, `ApiHelpersTest`, `EventRulesTest`: 30 tests (`mvn test`).
 - The owner's rule: **keep tests light. Unit tests and migration tests only.** H2 is only an option for migration tests; the app itself uses PostgreSQL.
 
 ## 6. Collector (`collector/`)
@@ -232,7 +233,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `npm run dev:mock` serves a fake API from `mock/` (recorded fixtures plus an in-memory fake of `/api/manage` in `mock/mock-manage-api.ts`). It sets the variable the Unix way: on Windows, run it from Git Bash.
 - `npm run dev` proxies `/api` to `localhost:8081`.
 
-**Tests:** 37 tests (`npm test`); type-check and build with `npm run build`.
+**Tests:** 38 tests (`npm test`); type-check and build with `npm run build`.
 
 ## 8. Run it
 

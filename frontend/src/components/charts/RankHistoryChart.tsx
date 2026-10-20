@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import type { EventRow, Point } from '@/api/types';
 import { eventMessage, eventTone } from '@/domain/events';
-import { markerEvents, rankDomain, tierLines, timeTicks, withGaps, type HistoryDatum } from '@/domain/history';
+import { isolatedPoints, markerEvents, rankDomain, tierLines, timeTicks, withGaps, type HistoryDatum } from '@/domain/history';
 import { useFormat } from '@/i18n/format';
 
 export interface VersionMark {
@@ -40,6 +40,8 @@ export function RankHistoryChart({ points, stepMinutes, events, versions, height
 
   const data: HistoryDatum[] = useMemo(() => withGaps(points, stepMinutes), [points, stepMinutes]);
   const domain = useMemo(() => rankDomain(data), [data]);
+  // Few readings: dot every one. Otherwise only those between two breaks, which the line can't draw.
+  const dotted = useMemo(() => (points.length <= 30 ? null : isolatedPoints(data)), [points.length, data]);
   const first = data[0]?.t ?? 0;
   const last = data[data.length - 1]?.t ?? 0;
   const markers = useMemo(() => markerEvents(events, first, last, stepMinutes), [events, first, last, stepMinutes]);
@@ -81,7 +83,11 @@ export function RankHistoryChart({ points, stepMinutes, events, versions, height
               );
             }}
           />
-          <Line type="monotone" dataKey="rank" stroke="var(--series)" strokeWidth={2} dot={false} connectNulls={false}
+          <Line type="monotone" dataKey="rank" stroke="var(--series)" strokeWidth={2} connectNulls={false}
+            dot={({ cx, cy, index }: { cx?: number; cy?: number; index?: number }) => (
+              cx != null && cy != null && data[index ?? -1]?.rank != null && (dotted === null || dotted.has(index!))
+                ? <circle key={index} cx={cx} cy={cy} r={2.5} fill="var(--series)" />
+                : <g key={index} />)}
             activeDot={{ r: 4, fill: 'var(--series)', stroke: 'var(--surface)', strokeWidth: 2 }} isAnimationActive={false} />
           {markers.map((m) => {
             const tone = eventTone(m);

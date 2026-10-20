@@ -34,6 +34,7 @@ class EventEngineTest {
         Map<Long, Integer> previous = Map.of();
         Instant previousSlot = null;
         Instant baselineSlot = null;
+        List<Instant> slots = new java.util.ArrayList<>();
         long snapshotId = 0;
 
         Chart() {
@@ -55,8 +56,10 @@ class EventEngineTest {
             for (Long id : union(previous, current)) {
                 if (states.containsKey(id)) relevant.put(id, states.get(id));
             }
+            slots.add(slot);
+            if (slots.size() > eng.config().recentRanksKept()) slots.remove(0);
             Result r = eng.process(new Input(++snapshotId, slot, intervalMinutes, previousSlot, baselineSlot,
-                    previous, current, relevant));
+                    previous, current, relevant, List.copyOf(slots)));
             states.putAll(r.states());
             previous = current;
             previousSlot = slot;
@@ -234,6 +237,37 @@ class EventEngineTest {
             rising = chart.next(T0.plus(Duration.ofHours(4L * step)), current).states().get(app).rising();
         }
         assertTrue(rising, "70 → 55 over a day, 4 of 6 steps up");
+    }
+
+    @Test
+    void risingLooksAtTheLastDayWhateverTheIntervalSetting() {
+        // Read hourly, but the chart's interval was just changed to 4 hours: the window is still the
+        // last 24 hours of readings (24 gains, 24 places), not the last 6 readings (6 places).
+        Chart chart = new Chart(engine, 240);
+        long app = 9;
+        boolean rising = false;
+        for (int h = 0; h <= 24; h++) {
+            Map<Long, Integer> current = new LinkedHashMap<>();
+            current.put(app, 80 - h);
+            rising = chart.next(T0.plus(Duration.ofHours(h)), current).states().get(app).rising();
+        }
+        assertTrue(rising, "80 → 56 over the last day");
+    }
+
+    @Test
+    void risingNeedsADayOfHistory() {
+        // Every 4 hours but the setting still says hourly: 6 readings already cover the day.
+        Chart chart = new Chart(engine, 60);
+        long app = 10;
+        int[] path = {70, 66, 66, 61, 58, 58, 55};
+        boolean rising = false;
+        for (int step = 0; step < path.length; step++) {
+            Map<Long, Integer> current = new LinkedHashMap<>();
+            current.put(app, path[step]);
+            rising = chart.next(T0.plus(Duration.ofHours(4L * step)), current).states().get(app).rising();
+            if (step < path.length - 1) assertFalse(rising, "less than a day of readings");
+        }
+        assertTrue(rising);
     }
 
     @Test

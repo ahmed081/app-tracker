@@ -49,7 +49,8 @@ public class AppController {
         ChartRow c = repo.chartByKey(chart)
                 .orElseThrow(() -> new NotFoundException("No chart " + chart + " (use a key like ph/7006/top-free)"));
         TimeWindow w = TimeWindow.parse(range, "30d");
-        int step = stepMinutes != null ? ChartController.clamp(stepMinutes, 60, 7 * 24 * 60) : w.defaultStepMinutes();
+        int step = w.stepMinutes(stepMinutes != null ? ChartController.clamp(stepMinutes, 60, 7 * 24 * 60) : null,
+                c.chart().intervalMinutes());
         Instant to = repo.latest(c.id()).map(SnapRef::slot).orElse(Instant.now());
         Instant from = w.minutes() >= TimeWindow.ALL_MINUTES ? Instant.EPOCH : to.minus(Duration.ofMinutes(w.minutes()));
         List<Point> points = repo.series(c.id(), List.of(a.id()), from, to, step).getOrDefault(a.id(), List.of());

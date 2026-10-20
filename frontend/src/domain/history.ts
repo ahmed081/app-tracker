@@ -10,7 +10,8 @@ export interface HistoryDatum {
  * Points come only for periods where the app was ranked. A hole longer than
  * 3 steps means it dropped out of the chart (or collection stopped): insert a
  * null so the line breaks there instead of drawing a misleading straight
- * segment. Shorter holes (a missed hourly reading) are bridged.
+ * segment. Shorter holes (a missed reading) are bridged. The API never uses a
+ * step shorter than the chart's interval, so one step is at least one reading.
  */
 export function withGaps(points: Point[], stepMinutes: number): HistoryDatum[] {
   const step = stepMinutes * 60_000;
@@ -22,6 +23,15 @@ export function withGaps(points: Point[], stepMinutes: number): HistoryDatum[] {
     out.push({ t, rank: p.rank });
     prev = t;
   }
+  return out;
+}
+
+/** Indexes of ranked points with no ranked neighbour: a line can't show them, so they get a dot. */
+export function isolatedPoints(data: HistoryDatum[]): Set<number> {
+  const out = new Set<number>();
+  data.forEach((d, i) => {
+    if (d.rank !== null && data[i - 1]?.rank == null && data[i + 1]?.rank == null) out.add(i);
+  });
   return out;
 }
 
