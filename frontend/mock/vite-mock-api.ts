@@ -1,12 +1,14 @@
 // Development-only fake API: serves recorded responses from mock/fixtures in the
 // exact shapes of the backend, so the UI can be built and reviewed without it.
-// The Settings API (/api/manage) is an in-memory fake (mock-manage-api.ts).
+// The Settings API (/api/manage) and the watchlist (/api/watch) are in-memory
+// fakes (mock-manage-api.ts, mock-watch-api.ts).
 import type { Plugin } from 'vite';
 import type { IncomingMessage } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleManage } from './mock-manage-api.ts';
+import { handleWatch } from './mock-watch-api.ts';
 
 const ROOT = fileURLToPath(new URL('./fixtures', import.meta.url));
 const WINDOWS = ['1h', '24h', '7d', '30d'];
@@ -28,6 +30,7 @@ function handle(url: URL, method = 'GET', body: Json = {}): { status: number; bo
   const notFound = (detail: string) => ({ status: 404, body: { status: 404, detail } });
 
   if (p.startsWith('/api/manage/')) return handleManage(p, method, body, load('charts.json') as unknown as Json[]);
+  if (p === '/api/watch' || p.startsWith('/api/watch/')) return handleWatch(p, method, body, qs, load);
 
   if (p === '/api/charts') return { status: 200, body: load('charts.json') };
 

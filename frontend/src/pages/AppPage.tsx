@@ -10,6 +10,7 @@ import { useResource } from '@/features/remote/useResource';
 import { flag, useFormat } from '@/i18n/format';
 import { RankHistoryChart, type VersionMark } from '@/components/charts/RankHistoryChart';
 import { EventList } from '@/components/app/EventList';
+import { FollowMenu } from '@/components/app/FollowButton';
 import { Freshness } from '@/components/app/Freshness';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { RisingTag } from '@/components/ui/Badges';
@@ -133,12 +134,16 @@ function IdentityHeader({ app, listing, name, perf, chart }: {
               {listing?.ageRating && <span className="rounded border border-line px-1.5 text-[12px]">{listing.ageRating}</span>}
             </p>
           </div>
-          {listing?.storeUrl && (
-            <a href={listing.storeUrl} target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-strong">
-              {t('app.openInStore')}<ExternalLink aria-hidden className="size-3.5" />
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <FollowMenu appleAppId={app.appleAppId} chartKey={perf?.chart ?? null}
+              chartLabel={ref ? `${f.country(ref.country)} · ${f.genre(ref.genreId, chart?.genreName ?? String(ref.genreId))} · ${f.chartType(ref.type)}` : ''} />
+            {listing?.storeUrl && (
+              <a href={listing.storeUrl} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-strong">
+                {t('app.openInStore')}<ExternalLink aria-hidden className="size-3.5" />
+              </a>
+            )}
+          </div>
         </div>
         {ref && (
           <dl className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]">

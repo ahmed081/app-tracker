@@ -1,11 +1,11 @@
-// Saving from the Settings menu: one entry per form or switch (its id), plus
+// Saving (Settings, watchlist): one entry per form or switch (its id), plus
 // the admin-key prompt shown when the server answers 401.
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { ManageWrites } from '@/api/manageApi';
+import type { WriteApi } from '@/api/resources';
 
-export type MutationName = keyof ManageWrites;
-export type MutationParams<M extends MutationName> = Parameters<ManageWrites[M]>[0];
-export type MutationData<M extends MutationName> = Awaited<ReturnType<ManageWrites[M]>>;
+export type MutationName = keyof WriteApi;
+export type MutationParams<M extends MutationName> = Parameters<WriteApi[M]>[0];
+export type MutationData<M extends MutationName> = Awaited<ReturnType<WriteApi[M]>>;
 
 export type MutationStatus = 'idle' | 'saving' | 'success' | 'error';
 

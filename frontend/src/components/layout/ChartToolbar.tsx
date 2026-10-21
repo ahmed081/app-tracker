@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Combobox } from '@/components/ui/Combobox';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Freshness } from '@/components/app/Freshness';
+import { FollowButton } from '@/components/app/FollowButton';
 
 /**
  * Which chart (country, category, type) and which time window. Changing the
@@ -60,7 +61,10 @@ export function ChartToolbar({ charts: all, chart, showWindow = true }: { charts
             onChange={(w: TimeWindow) => dispatch(preferencesActions.windowChanged(w))} />
         </div>
       )}
-      <Freshness asOf={chart.asOf} delayed={chart.delayed} className="ms-auto pb-2" />
+      <div className="ms-auto flex flex-wrap items-center gap-3">
+        <Freshness asOf={chart.asOf} delayed={chart.delayed} />
+        <FollowButton target={{ kind: 'CHART', chartKey: chart.key }} variant="label" />
+      </div>
     </div>
   );
 }

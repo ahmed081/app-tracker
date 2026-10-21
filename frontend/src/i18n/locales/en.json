@@ -126,6 +126,19 @@
     "empty": "No important moves in this period.",
     "thisApp": "The app"
   },
+  "follow": {
+    "app": "Follow {{app}} in this chart",
+    "appAllCharts": "Follow {{app}} in all its charts",
+    "chart": "Follow this chart",
+    "chartHint": "Follow this chart’s big moments: a new #1 and apps entering its top tier",
+    "coveredByAll": "Followed in all its charts. Change it on the app page or in My watchlist.",
+    "follow": "Follow",
+    "following": "Following",
+    "menuAllCharts": "In all its charts",
+    "menuHint": "The watchlist is shared by everyone who uses this site.",
+    "menuLabel": "Follow options",
+    "menuThisChart": "In this chart ({{chart}})"
+  },
   "freshness": {
     "delayed": "Data delayed: last update {{when}}",
     "noData": "No data yet",
@@ -185,7 +198,7 @@
     },
     "adminKey": {
       "title": "Admin key needed",
-      "body": "This server protects the Settings menu with an admin key.",
+      "body": "This server protects the Settings menu and changes to the watchlist with an admin key.",
       "label": "Admin key",
       "hint": "Kept in this browser tab only, until you close it.",
       "needed": "Enter the admin key to see and change the settings.",
@@ -399,7 +412,8 @@
     "overview": "Overview",
     "ranking": "Ranking",
     "settings": "Settings",
-    "skip": "Skip to content"
+    "skip": "Skip to content",
+    "watchlist": "Watchlist"
   },
   "notFound": {
     "body": "The page you asked for does not exist.",
@@ -508,6 +522,41 @@
     "days": "{{value}} d",
     "hours": "{{value}} h",
     "megabytes": "{{value}} MB"
+  },
+  "watchlist": {
+    "allCharts": "All charts",
+    "appsHint": "Current rank and change over the last {{window}}",
+    "appsTitle": "Apps",
+    "asOf": "Updated {{when}}",
+    "chartFilter": "Chart",
+    "chartsTitle": "Charts",
+    "colApp": "App",
+    "colLastEvent": "Last key move",
+    "colRank": "Rank",
+    "colRule": "Alerts",
+    "colTrend": "7 days",
+    "empty": {
+      "body": "Tap the ☆ next to an app in a ranking, in the movers, in search results or on an app page. On a ranking, “Follow this chart” follows its big moments.",
+      "cta": "Go to the ranking",
+      "title": "You don’t follow anything yet"
+    },
+    "lastKeyMove": "Latest big moment",
+    "noApps": "No followed app in this chart.",
+    "noEvent": "No key move yet",
+    "noKeyMove": "No big moment in the last 30 days.",
+    "notRanked": "Not ranked",
+    "numberOne": "#1 now",
+    "preset": {
+      "ALL": "All",
+      "CUSTOM": "Custom",
+      "IMPORTANT": "Important"
+    },
+    "rankedNowhere": "Not ranked in any chart now",
+    "scopeAll": "All charts",
+    "since": "since {{when}}",
+    "subtitle": "The apps and charts you follow. This list is shared by everyone who uses this site.",
+    "title": "My watchlist",
+    "unfollow": "Unfollow"
   },
   "window": {
     "label": "Period",

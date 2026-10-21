@@ -58,7 +58,7 @@ public class QueryService {
      * or before the window start; when the chart is younger than the window, its first
      * snapshot (the response's windowAt then shows the shorter period actually covered).
      */
-    Optional<SnapRef> windowSnapshot(long chartId, SnapRef now, TimeWindow window) {
+    public Optional<SnapRef> windowSnapshot(long chartId, SnapRef now, TimeWindow window) {
         Instant start = now.slot().minus(Duration.ofMinutes(window.minutes()));
         return repo.atOrBefore(chartId, start)
                 .or(() -> repo.earliest(chartId).filter(first -> first.slot().isBefore(now.slot())));
@@ -120,7 +120,7 @@ public class QueryService {
                 win.map(SnapRef::slot).orElse(null), rows, leftRows);
     }
 
-    static String status(Integer before, int now) {
+    public static String status(Integer before, int now) {
         if (before == null) return "NEW";
         if (before > now) return "UP";
         if (before < now) return "DOWN";

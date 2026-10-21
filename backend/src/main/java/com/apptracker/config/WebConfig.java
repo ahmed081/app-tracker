@@ -35,12 +35,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * /api/admin/** and /api/manage/** require the X-Admin-Key header when ADMIN_KEY
-     * is set. With no ADMIN_KEY they are open (the owner's choice until the server is public).
+     * is set. So do writes to the watchlist and alerts; their reads stay open.
+     * With no ADMIN_KEY everything is open (the owner's choice until the server is public).
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new AdminKeyInterceptor(props.adminKey()))
+        registry.addInterceptor(new AdminKeyInterceptor(props.adminKey(), false))
                 .addPathPatterns("/api/admin/**", "/api/manage/**");
+        registry.addInterceptor(new AdminKeyInterceptor(props.adminKey(), true))
+                .addPathPatterns("/api/watch", "/api/watch/**", "/api/alerts", "/api/alerts/**");
     }
 
     /**
@@ -56,9 +59,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     static final class AdminKeyInterceptor implements HandlerInterceptor {
         private final byte[] key;
+        private final boolean writesOnly;
 
-        AdminKeyInterceptor(String adminKey) {
+        /** @param writesOnly true = GET requests pass without the key */
+        AdminKeyInterceptor(String adminKey, boolean writesOnly) {
             this.key = adminKey == null ? new byte[0] : adminKey.getBytes(StandardCharsets.UTF_8);
+            this.writesOnly = writesOnly;
         }
 
         @Override
@@ -66,6 +72,9 @@ public class WebConfig implements WebMvcConfigurer {
                 throws Exception {
             if (key.length == 0) return true;
             if (HttpMethod.OPTIONS.matches(request.getMethod())) return true;   // CORS preflight carries no headers
+            if (writesOnly && (HttpMethod.GET.matches(request.getMethod()) || HttpMethod.HEAD.matches(request.getMethod()))) {
+                return true;
+            }
             String given = request.getHeader("X-Admin-Key");
             byte[] givenBytes = given == null ? new byte[0] : given.getBytes(StandardCharsets.UTF_8);
             if (!MessageDigest.isEqual(key, givenBytes)) {

@@ -21,6 +21,7 @@ Without Docker (Java 17, Maven 3.6+ and a PostgreSQL that already has the collec
 psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -v backend_password='BACKEND_PASS' -f db/create-backend-user.sql
 psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/schema.sql
 psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/management.sql
+psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/watchlist.sql
 
 export JDBC_URL=jdbc:postgresql://localhost:5432/apptracker
 export DATABASE_USER=app_backend DATABASE_PASSWORD=BACKEND_PASS     # the app runs as app_backend
@@ -66,9 +67,20 @@ Used by the web app's Settings menu. Nothing is ever deleted: "remove" means "sw
 
 A rejected change returns `400` with `{"errors": {"depth": "Must be between 1 and 200"}}`; a duplicate or a rebuild already running returns `409`.
 
+### Watchlist API (`/api/watch`)
+
+One shared watchlist, stored on the server. An app is followed in one chart, or in every chart it appears in (no `chartKey`); a chart is followed for its big moments (a new #1, an app entering the highest tier, an app entering the chart straight into that tier). Unfollowing switches the watch off; following again switches the same row back on and keeps its alert rule. Nothing is deleted.
+
+| Endpoint | Does |
+|---|---|
+| `GET /api/watch?window=24h` | Followed apps, one line per chart (current rank, change over the window, 7-day trend, last important event, alert rule), and followed charts (current #1 and since when, latest big moment) |
+| `GET /api/watch/status?appleAppId=&chartKey=` | Active watches, optionally only those covering an app and/or a chart (for Follow buttons) |
+| `POST /api/watch` | Follow `{kind: "APP", appleAppId, chartKey?}` or `{kind: "CHART", chartKey}`; returns the watch |
+| `PUT /api/watch/{id}` | `{active?, rule?: {preset, eventTypes?, minPlaces?, tiers?}}`: unfollow, or change an app watch's alert rule (presets IMPORTANT, ALL, CUSTOM); 400 with `{"errors": {field: message}}` |
+
 ### Access
 
-`/api/manage/**` and `/api/admin/**` need the header `X-Admin-Key: <ADMIN_KEY>` when `ADMIN_KEY` is set. **With no `ADMIN_KEY` they are open** to anyone who can reach the API: set it before the server is public. Responses carry an `ETag`, so repeated requests between readings get `304 Not Modified`.
+`/api/manage/**` and `/api/admin/**` need the header `X-Admin-Key: <ADMIN_KEY>` when `ADMIN_KEY` is set. So do writes to `/api/watch/**` (and, later, `/api/alerts/**`); their `GET`s stay open. **With no `ADMIN_KEY` they are open** to anyone who can reach the API: set it before the server is public. Responses carry an `ETag`, so repeated requests between readings get `304 Not Modified`.
 
 Event importance: 3 high (#1, Top 10/Top 5 crossings), 2 medium (entries, exits, big moves, rising), 1 low (ordinary moves, new best rank), 0 none (first observed).
 
@@ -89,7 +101,7 @@ New rules apply to new readings. To apply them to the past too, recompute (Setti
 
 ## Database user
 
-The backend runs as `app_backend`: it reads everything and writes only its own tables (details, ratings, events, app states, tier intervals, `snapshot.processed_at`). It cannot change the rankings or the collector's history, and cannot create or drop tables. For the Settings menu it can also add countries, tracking rows and tracking countries, and flip their switches (`db/management.sql`), but never delete them. Its tables are created separately by the admin (`db/schema.sql`, `db/management.sql`).
+The backend runs as `app_backend`: it reads everything and writes only its own tables (details, ratings, events, app states, tier intervals, `snapshot.processed_at`). It cannot change the rankings or the collector's history, and cannot create or drop tables. For the Settings menu it can also add countries, tracking rows and tracking countries, and flip their switches (`db/management.sql`), but never delete them. For the watchlist it can add and change watches and alert rules, never delete them (`db/watchlist.sql`). Its tables are created separately by the admin (`db/schema.sql`, `db/management.sql`, `db/watchlist.sql`).
 
 ## Tests
 

@@ -98,3 +98,27 @@ describe('saving settings', () => {
     }
   });
 });
+
+describe('following', () => {
+  it('refreshes the watchlist and the Follow buttons after a follow', async () => {
+    const realFetch = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method ?? 'GET'} ${url}`);
+      return new Response(JSON.stringify(url.includes('/status') ? [] : init?.method === 'POST' ? { id: 1 } : { apps: [], charts: [] }),
+        { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    try {
+      const store = createStore();
+      for (const [resource, params] of [['watchlist', { window: '24h' }], ['watchStatus', {}]] as const) {
+        store.dispatch(remoteActions.fetchRequested({ resource, params, key: resourceKey(resource, params) }));
+      }
+      await new Promise((r) => setTimeout(r, 20));
+      store.dispatch(manageActions.mutationRequested({ op: 'follow', id: 'f', params: { kind: 'APP', appleAppId: '42' } }));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(calls.slice(2).sort()).toEqual(['GET /api/watch/status', 'GET /api/watch?window=24h', 'POST /api/watch'].sort());
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});

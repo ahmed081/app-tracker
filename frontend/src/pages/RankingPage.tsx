@@ -10,6 +10,7 @@ import { useFormat } from '@/i18n/format';
 import { ChartToolbar } from '@/components/layout/ChartToolbar';
 import { PartialWindowNote } from '@/components/app/PartialWindowNote';
 import { AppLabel } from '@/components/app/AppLabel';
+import { FollowButton } from '@/components/app/FollowButton';
 import { BumpChart } from '@/components/charts/BumpChart';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { Panel } from '@/components/ui/Panel';
@@ -115,7 +116,7 @@ function RankingTable({ rows, chartKey, minPlaces, windowLabel }: { rows: Rankin
   const f = useFormat();
   const th = 'px-3 py-2 text-start text-[12px] font-medium text-ink-3';
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full min-w-[560px] border-collapse">
         <caption className="sr-only">{t('ranking.caption')}</caption>
         <thead className="border-b border-line">
@@ -125,7 +126,8 @@ function RankingTable({ rows, chartKey, minPlaces, windowLabel }: { rows: Rankin
             <th scope="col" className={th}>{t('ranking.colApp')}</th>
             <th scope="col" className={cn(th, 'w-24')}>{windowLabel}</th>
             <th scope="col" className={cn(th, 'hidden w-28 md:table-cell')}>{t('ranking.colTrend')}</th>
-            <th scope="col" className={cn(th, 'hidden w-24 pe-5 lg:table-cell')}>{t('ranking.colRating')}</th>
+            <th scope="col" className={cn(th, 'hidden w-24 lg:table-cell')}>{t('ranking.colRating')}</th>
+            <th scope="col" className={cn(th, 'w-10 pe-5')}><span className="sr-only">{t('follow.follow')}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -148,13 +150,16 @@ function RankingTable({ rows, chartKey, minPlaces, windowLabel }: { rows: Rankin
                   : <RankDelta change={r.windowChange} isNew={r.windowStatus === 'NEW'} minPlaces={minPlaces} />}
               </td>
               <td className="hidden px-3 align-middle md:table-cell"><Sparkline points={r.trend} /></td>
-              <td className="hidden px-3 pe-5 align-middle text-[13px] text-ink-2 lg:table-cell">
+              <td className="hidden px-3 align-middle text-[13px] text-ink-2 lg:table-cell">
                 {r.app.rating != null ? (
                   <span className="inline-flex items-center gap-1 tnum">
                     <Star aria-hidden className="size-3.5 fill-current text-ink-3" />{f.decimal1(r.app.rating)}
                     <span className="text-ink-3">({f.compact(r.app.ratingCount)})</span>
                   </span>
                 ) : '—'}
+              </td>
+              <td className="pe-4 align-middle">
+                <FollowButton target={{ kind: 'APP', appleAppId: r.app.appleAppId, chartKey }} name={r.app.name} />
               </td>
             </tr>
           ))}

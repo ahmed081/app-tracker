@@ -7,6 +7,7 @@ import { preferencesActions, type Theme } from '@/features/preferences/preferenc
 import { useChartSelection } from '@/features/charts/useChartSelection';
 import { chartPath } from '@/domain/charts';
 import { cn } from '@/components/ui/cn';
+import { AdminKeyDialog } from './AdminKeyDialog';
 
 const NEXT_THEME: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_ICON = { system: SunMoon, light: Sun, dark: Moon } as const;
@@ -17,6 +18,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { language, theme } = useAppSelector((s) => s.preferences);
+  const keyPrompt = useAppSelector((s) => s.manage.adminKeyPrompt);
   const { chart } = useChartSelection();
   const [query, setQuery] = useState(params.get('q') ?? '');
   const ThemeIcon = THEME_ICON[theme];
@@ -45,6 +47,7 @@ export function AppShell() {
             <NavLink to="/" end className={navItem}>{t('nav.overview')}</NavLink>
             {chart && <NavLink to={chartPath(chart.key)} end className={navItem}>{t('nav.ranking')}</NavLink>}
             {chart && <NavLink to={`${chartPath(chart.key)}/movers`} className={navItem}>{t('nav.movers')}</NavLink>}
+            <NavLink to="/watchlist" className={navItem}>{t('nav.watchlist')}</NavLink>
           </nav>
           <form role="search" onSubmit={onSearch} className="order-last w-full sm:order-none sm:ms-auto sm:w-72">
             <label htmlFor="app-search" className="sr-only">{t('search.label')}</label>
@@ -76,6 +79,7 @@ export function AppShell() {
       <main id="main" className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <Outlet />
       </main>
+      {keyPrompt && <AdminKeyDialog />}
     </div>
   );
 }

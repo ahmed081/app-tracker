@@ -24,7 +24,8 @@ export function buildUrl(path: string, query: Record<string, QueryValue> = {}): 
   return `${runtimeConfig.apiBaseUrl}${path}${qs ? `?${qs}` : ''}`;
 }
 
-// The Settings API needs the X-Admin-Key header when the server sets ADMIN_KEY.
+// The Settings API, and writes to the watchlist and alerts, need the X-Admin-Key
+// header when the server sets ADMIN_KEY.
 // The key lives in sessionStorage only: it is forgotten when the tab closes.
 const ADMIN_KEY_STORAGE = 'rankline.adminKey';
 
@@ -45,11 +46,13 @@ export function setAdminKey(key: string) {
   }
 }
 
+const KEYED_PATHS = ['/api/manage', '/api/watch', '/api/alerts'];
+
 async function request<T>(method: string, path: string, query?: Record<string, QueryValue>, body?: unknown,
   signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  const adminKey = path.startsWith('/api/manage') ? getAdminKey() : '';
+  const adminKey = KEYED_PATHS.some((p) => path.startsWith(p)) ? getAdminKey() : '';
   if (adminKey) headers['X-Admin-Key'] = adminKey;
 
   let res: Response;

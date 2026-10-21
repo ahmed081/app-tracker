@@ -4,6 +4,7 @@ import { parseChartKey } from '@/domain/charts';
 import { useResource } from '@/features/remote/useResource';
 import { flag, useFormat } from '@/i18n/format';
 import { AppLabel } from '@/components/app/AppLabel';
+import { FollowButton } from '@/components/app/FollowButton';
 import { Panel } from '@/components/ui/Panel';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/States';
 
@@ -28,6 +29,7 @@ export function SearchPage() {
                   {results.data!.map((r) => (
                     <li key={r.app.appleAppId} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
                       <AppLabel app={r.app} chartKey={r.charts[0]?.chart} size={40} className="min-w-[14rem] flex-1" />
+                      <FollowButton target={{ kind: 'APP', appleAppId: r.app.appleAppId }} name={r.app.name} className="order-last" />
                       <ul className="flex flex-wrap gap-2">
                         {r.charts.length === 0 && <li className="text-[12.5px] text-ink-3">{t('search.notRanked')}</li>}
                         {r.charts.map((c) => {
