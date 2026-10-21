@@ -307,3 +307,191 @@ The earlier work was done in a sandbox that could not reach Apple or Maven Centr
 - Keep the API and service layer clean: only `src/api/*` knows URLs, and pages never call `fetch`.
 - Prefer few, maintained dependencies.
 - Don't put secrets in code, commits or chat.
+
+# Milestone 9: Watchlist and Alert rules (approved scope)
+
+The owner approved this scope on 2026-10-21. Read `CLAUDE.md` first for project context and working agreements.
+
+**In scope:**
+- a watchlist;
+- alert rules;
+- alerts shown **inside the web app** (the bell and the Alerts page).
+
+**Out of scope, do not build:**
+- user accounts or sign-in;
+- email, Telegram or any other outside channel;
+- a background notifier job;
+- notification rows stored per alert.
+
+## Owner decisions
+
+| Question | Decision |
+|---|---|
+| Whose watchlist? | **One shared watchlist, stored on the server.** It is the same on every device, for everyone who can reach the site. |
+| Protection | **Same as Settings.** If `ADMIN_KEY` is empty, everything is open. If it is set, *writes* (follow, unfollow, rule changes, "mark as seen") need `X-Admin-Key`. *Reads* (watchlist, alerts, unread count) stay open. |
+
+## 1. Functional
+
+### Watchlist
+- **Follow buttons** (☆ / ★, toggle):
+    - on the app page header (choice: this chart, or all charts of the app);
+    - on each ranking row;
+    - on movers lists;
+    - on search results;
+    - on the chart toolbar ("Follow this chart").
+- **Two kinds of follow:**
+    - **App:** in one chart (`chart_id` set) or in every chart the app appears in (`chart_id` empty).
+    - **Chart:** its big moments only, not every app in it. Big moments are:
+        - a new #1 (`REACHED_NUMBER_ONE`);
+        - an app entering the chart's highest configured tier (`ENTERED_TOP_N` where tier = the largest tier in the event rules);
+        - an app entering the chart (`NEW_ENTRY`) **only if its rank is within that tier**.
+- **My watchlist page** (`/watchlist`, a new menu item):
+    - One row per followed app and chart: current rank, change over the selected period, 7-day sparkline, last important event, and the rule preset name.
+    - An app followed in "all charts" shows one line per chart it currently ranks in.
+    - Followed charts appear as cards: current #1 and the latest key move.
+    - Period switch (1H / 24H / 7D / 30D) and a chart filter, reusing `ChartToolbar` / `SegmentedControl`.
+    - Empty state: explain how to follow, with a link to the Ranking page.
+- **Unfollowing switches the watch off** (`active = false`); nothing is deleted. Following again reactivates the same row and keeps its rule.
+
+### Alert rules
+- **Each watch has exactly one rule.** There are three presets:
+    - **IMPORTANT** (default): `REACHED_NUMBER_ONE`, `LOST_NUMBER_ONE`, `ENTERED_TOP_N`, `LEFT_TOP_N`, `LEFT_CHART`.
+    - **ALL**: IMPORTANT plus `BIG_MOVE`, `RISING_STARTED`, `NEW_ENTRY`, `RE_ENTRY`, and `NEW_VERSION` (see below).
+    - **CUSTOM**, with three settings:
+        - which event types (checkboxes from the list above);
+        - a minimum move in places for `BIG_MOVE`, `MOVED_UP` and `MOVED_DOWN` (default 10; allows `MOVED_UP`/`MOVED_DOWN` to be included);
+        - which tiers count for `ENTERED_TOP_N` / `LEFT_TOP_N` (subset of the configured tiers; default all).
+- Chart watches use their fixed "big moments" set; their rule is not editable in v1.
+- **The rule editor** is a small panel, opened from the watchlist row or the Follow button's menu.
+    - It shows a **live preview**: "With this rule you would have had N alerts in the last 7 days", plus the 3 most recent examples.
+- **`NEW_VERSION`** is not a chart event. It comes from `app_metadata_version`: a row whose `version` differs from the previous row for the same app and country.
+    - It is an app-level alert: it appears once, not per chart.
+    - It applies only to app watches.
+
+### Alerts
+- **🔔 bell** in the header, next to the language switch.
+    - It shows the count of alerts newer than "last seen", and shows "99+" above 99.
+    - It refreshes on the existing 5-minute remote cycle and when the tab comes back.
+- **Alerts page** (`/alerts`):
+    - Matching alerts, newest first, **grouped by collection hour** ("Today 14:00", "Yesterday 09:00").
+    - Uses the existing event sentences (`domain/events.ts` / `EventList` styling) and links to the app page with `?chart=`.
+    - Alerts newer than "last seen" are highlighted.
+    - Filters: app, chart, event type, period (24H / 7D / 30D).
+    - Older alerts are paged with a "Load more" button.
+    - A **"Mark all as seen"** button sets "last seen" to now.
+- **Quieter feed (cooldown):**
+    - The same watch, the same app, the same chart and the same event type is shown at most once per **3 hours**. The first occurrence is shown, later ones are hidden.
+    - The cooldown is applied at read time, so it is not stored.
+    - Opposite events are not merged: `ENTERED_TOP_N` and `LEFT_TOP_N` are different types.
+- **Gap events stay out of alerts:** events with `gap = true`, which follow a collection outage, are excluded from alerts. They are still shown on app pages.
+- **Duplicates:** an app followed both "in one chart" and "in all charts" must not produce the same alert twice. De-duplicate by `chart_event.id`, keeping the most permissive matching watch.
+
+## 2. Technical design
+
+### Key principle: alerts are computed at read time, never stored
+- An alert is "a `chart_event` (or version change) that matches an active watch's rule".
+- The query joins events with watches and rules.
+- Consequences:
+    - Rule changes apply immediately, including to past alerts.
+    - Recomputing events from Settings, which deletes and recreates `chart_event` rows, cannot break anything.
+    - There is no notifier job.
+- **"Unread"** = alerts with `occurred_at > setting['alerts_seen_at']`.
+- Do not use `chart_event.notified`; it is reserved for a future outside notifier.
+
+### Migration `V4__watchlist.sql` (Flyway, runs as `apptracker`)
+
+```
+watch
+  id           bigint identity PK
+  user_id      bigint NULL            -- always NULL for now; room for future accounts
+  kind         text   CHECK (kind IN ('APP','CHART'))
+  app_id       bigint NULL REFERENCES app(id)
+  chart_id     bigint NULL REFERENCES chart(id)   -- APP: NULL = all charts of the app
+  active       boolean NOT NULL DEFAULT true
+  created_at, updated_at timestamptz
+  CHECK ((kind='APP' AND app_id IS NOT NULL) OR (kind='CHART' AND app_id IS NULL AND chart_id IS NOT NULL))
+  UNIQUE NULLS NOT DISTINCT (user_id, kind, app_id, chart_id)    -- PostgreSQL 15+
+
+alert_rule
+  watch_id      bigint PK REFERENCES watch(id)
+  preset        text CHECK (preset IN ('IMPORTANT','ALL','CUSTOM')) DEFAULT 'IMPORTANT'
+  event_types   text[]  NULL          -- CUSTOM only
+  min_places    integer NULL          -- CUSTOM only, 1..200
+  tiers         integer[] NULL        -- CUSTOM only, subset of configured tiers
+  updated_at    timestamptz
+```
+
+- **Settings row:** `setting` key `alerts_seen_at` holds `{"at": "<iso>"}`. A missing row means "never seen" (count from the last 7 days only).
+- **Grants:**
+    - `app_backend` gets `SELECT, INSERT, UPDATE` on `watch` and `alert_rule`, and `USAGE` on the new sequence.
+    - **No `DELETE`.**
+    - The collector gets `SELECT` only (or nothing).
+- **Indexes:**
+    - `watch (active, kind)`;
+    - `watch (app_id) WHERE active`;
+    - the existing `chart_event (app_id, occurred_at)` and `(chart_id, occurred_at)` indexes cover the joins.
+
+### Backend (package `com.apptracker.watch`)
+- **`AlertRule` record + `AlertMatcher`:** a **pure** function `(event, watch, rule, configuredTiers) → boolean`, plus a cooldown function `(ordered alerts) → visible alerts`. Unit-test both like `EventEngineTest`.
+- **`WatchRepository`:** NamedParameterJdbcTemplate, as in the rest of the backend.
+    - Candidate events come from SQL:
+        - events within the period;
+        - joined to active watches by app (and by chart when set) or by chart;
+        - with `gap = false` and `importance >= 1`.
+    - The matcher then applies the rule in Java. Keep it simple: the volume is small (hundreds of events per day).
+- **`WatchService`, `WatchController`:**
+
+| Endpoint | Does |
+|---|---|
+| `GET /api/watch` | Watches with rule, plus per app/chart: current rank, change over `?window=`, 7-day trend, last important event (reuse `QueryRepository` helpers) |
+| `POST /api/watch` | Follow `{kind, appleAppId?, chartKey?}`; reactivates an existing row; returns the watch |
+| `PUT /api/watch/{id}` | `{active?, rule?: {preset, eventTypes?, minPlaces?, tiers?}}`; 400 with field errors, as in `/api/manage` |
+| `GET /api/watch/status?appleAppId=&chartKey=` | Is this app/chart followed (for Follow buttons) |
+| `GET /api/alerts?window=7d&app=&chart=&type=&before=&limit=50` | Matching alerts after cooldown, newest first, as `EventRow` plus `watchId` and `isNew`; paging by `before` (occurred_at, id) |
+| `GET /api/alerts/count` | `{unread, seenAt}` |
+| `POST /api/alerts/seen` | Sets `alerts_seen_at` = now |
+| `GET /api/alerts/preview` | Same filters, with a draft rule in the query (or `POST` with a body): count over 7 days + 3 examples, for the rule editor |
+
+- **Protection:** add `/api/watch/**` and `/api/alerts/**` to the admin-key interceptor **for non-GET methods only**. `GET` stays open. The existing `OPTIONS` pass-through stays.
+- **`NEW_VERSION` alerts:** a small SQL over `app_metadata_version` using `LAG(version)` per (app, country), mapped to the same `EventRow` shape with type `NEW_VERSION` and the chart set to null. Add the type to the frontend event messages.
+
+### Frontend
+- **API layer:** add `watchApi.ts` (reads merged into `trackerApi`; writes like `manageApi`) and `watchTypes.ts`. Only `src/api/*` knows URLs.
+- **State:**
+    - Reads go through `useResource('watchlist' | 'watchStatus' | 'alerts' | 'alertCount' | 'alertPreview', …)`.
+    - Writes reuse the existing mutation mechanism: extend `useMutation` / `manageSaga` with the new ops, and map them in `INVALIDATES` so that following refreshes `watchlist`, `watchStatus` and `alertCount`, and rule changes refresh `alerts` and `alertCount`. Don't create a second, parallel mutation system.
+    - A 401 on a write must show the existing admin-key prompt. Make the prompt reachable outside `/settings`: a small modal triggered by `manage.keyRequired`.
+- **Domain:** `domain/alerts.ts` holds the preset definitions and validation (mirroring the backend limits), plus hour grouping for the Alerts page. Unit-test it.
+- **Components:**
+    - `FollowButton`: one reusable component, compact (icon) and labelled variants, with an optimistic toggle and a pending state.
+    - `RuleEditor`, `AlertBell`, `AlertList` (reusing the `EventList` row style).
+- **Pages:** `pages/WatchlistPage.tsx` and `pages/AlertsPage.tsx`, as lazy routes; menu items "Watchlist" and the bell.
+- **i18n:**
+    - Every text goes in `en.json` **and** `ar.json`, with all six Arabic plural forms.
+    - Arabic needs: alert counts, "N alerts in the last 7 days", hour group labels via `Intl`.
+    - The bell count uses Western digits.
+- **Fake API:** extend `mock/` with an in-memory fake of `/api/watch` and `/api/alerts`, so `npm run dev:mock` covers the new screens.
+
+### Tests (owner's rule: light, unit tests and migration tests only)
+- **Backend unit tests** (`AlertMatcherTest`):
+    - each preset;
+    - CUSTOM with `minPlaces` and tiers;
+    - chart big moments with a tier change in the rules;
+    - cooldown (3 h window, different types not merged);
+    - de-duplication across overlapping watches;
+    - gap events excluded.
+- **Migration test** for V4:
+    - tables, the CHECK constraint, the unique constraint;
+    - the backend role can insert and update but **not delete**.
+- **Frontend:**
+    - `domain/alerts.test.ts` (presets, validation, grouping);
+    - one saga test (a follow invalidates the watchlist and the count);
+    - the i18n key test must still pass.
+
+## 3. Build order (stop for review after each)
+
+1. **Watchlist:** V4 migration, the watch endpoints, FollowButton everywhere, My watchlist page, the fake API, tests.
+2. **Alert rules + Alerts:** matcher, alert endpoints, rule editor with preview, bell, Alerts page, tests.
+
+Update the READMEs (endpoint tables, screens) and `CLAUDE.md` (sections 5, 7 and 10) when done.
+
