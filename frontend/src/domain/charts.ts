@@ -45,11 +45,22 @@ export function isPartialWindow(asOf: string | null, windowAt: string | null, wi
 }
 
 /**
- * Chart to show when none is chosen: the remembered one if it still exists,
- * otherwise the first chart with data, otherwise the first chart.
+ * Chart to show when none is chosen: the remembered one if it is still
+ * collected, otherwise the first collected chart with data, otherwise any.
  */
 export function pickDefaultChart(charts: Chart[], remembered: string | null): Chart | undefined {
-  return charts.find((c) => c.key === remembered)
-    ?? charts.find((c) => c.active && c.asOf)
+  const active = charts.filter((c) => c.active);
+  return active.find((c) => c.key === remembered)
+    ?? active.find((c) => c.asOf)
+    ?? active[0]
+    ?? charts.find((c) => c.key === remembered)
     ?? charts[0];
+}
+
+/**
+ * Charts the chart picker offers: the collected ones, plus the current chart
+ * so a link to a switched-off chart still shows its history.
+ */
+export function pickableCharts(charts: Chart[], current: Chart): Chart[] {
+  return charts.filter((c) => c.active || c.key === current.key);
 }

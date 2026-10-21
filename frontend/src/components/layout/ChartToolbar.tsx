@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import type { Chart } from '@/api/types';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
-import { chartPath } from '@/domain/charts';
+import { chartPath, pickableCharts } from '@/domain/charts';
 import { preferencesActions, WINDOWS, type TimeWindow } from '@/features/preferences/preferencesSlice';
 import { flag, useFormat } from '@/i18n/format';
 import { Select } from '@/components/ui/Select';
@@ -14,13 +14,14 @@ import { Freshness } from '@/components/app/Freshness';
  * Which chart (country, category, type) and which time window. Changing the
  * chart keeps the user on the same kind of page.
  */
-export function ChartToolbar({ charts, chart, showWindow = true }: { charts: Chart[]; chart: Chart; showWindow?: boolean }) {
+export function ChartToolbar({ charts: all, chart, showWindow = true }: { charts: Chart[]; chart: Chart; showWindow?: boolean }) {
   const { t } = useTranslation();
   const f = useFormat();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const timeWindow = useAppSelector((s) => s.preferences.window);
+  const charts = pickableCharts(all, chart);
 
   const goTo = (next: Chart | undefined) => {
     if (!next || next.key === chart.key) return;

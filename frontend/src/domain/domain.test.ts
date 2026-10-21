@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EventRow } from '@/api/types';
-import { chartKey, isPartialWindow, parseChartKey, pickDefaultChart } from './charts';
+import { chartKey, isPartialWindow, parseChartKey, pickableCharts, pickDefaultChart } from './charts';
 import { eventMessage, eventTone } from './events';
 import { isolatedPoints, markerEvents, rankDomain, summarize, tierLines, timeTicks, withGaps } from './history';
 import { direction, isNoise, placesGained, tierOf } from './rank';
@@ -51,6 +51,14 @@ describe('charts', () => {
     expect(pickDefaultChart(charts, 'ph/7004/top-free')).toBe(charts[0]);
     expect(pickDefaultChart(charts, 'xx/1/top-free')).toBe(charts[1]);
     expect(pickDefaultChart(charts, null)).toBe(charts[1]);
+  });
+
+  it('leaves switched-off charts out of the picker, except the current one', () => {
+    const c = (key: string, active: boolean) => ({ key, asOf: '2026-10-19T09:00:00Z', active }) as never;
+    const off = c('ph/7004/top-free', false), on = c('ph/7006/top-free', true);
+    expect(pickDefaultChart([off, on], 'ph/7004/top-free')).toBe(on);
+    expect(pickableCharts([off, on], on)).toEqual([on]);
+    expect(pickableCharts([off, on], off)).toEqual([off, on]);
   });
 });
 

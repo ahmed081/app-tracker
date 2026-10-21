@@ -233,7 +233,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `npm run dev:mock` serves a fake API from `mock/` (recorded fixtures plus an in-memory fake of `/api/manage` in `mock/mock-manage-api.ts`). It sets the variable the Unix way: on Windows, run it from Git Bash.
 - `npm run dev` proxies `/api` to `localhost:8081`.
 
-**Tests:** 38 tests (`npm test`); type-check and build with `npm run build`.
+**Tests:** 39 tests (`npm test`); type-check and build with `npm run build`.
 
 ## 8. Run it
 
