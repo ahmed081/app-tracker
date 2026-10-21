@@ -389,7 +389,12 @@ public class QueryRepository {
                        w1.rank AS rank_24h_ago, w7.rank AS rank_7d_ago,
                        (SELECT round(avg(r.rank), 1) FROM ranking r JOIN snapshot s ON s.id = r.snapshot_id AND s.status = 'VALID'
                          WHERE r.chart_id = st.chart_id AND r.app_id = st.app_id
-                           AND r.slot_start > cur.slot_start - interval '30 days') AS avg_rank_30d
+                           AND r.slot_start > cur.slot_start - interval '30 days') AS avg_rank_30d,
+                       EXISTS (SELECT 1 FROM snapshot s
+                                WHERE s.chart_id = st.chart_id AND s.status = 'VALID' AND s.processed_at IS NOT NULL
+                                  AND s.slot_start > st.first_observed_at AND s.slot_start <= cur.slot_start
+                                  AND NOT EXISTS (SELECT 1 FROM ranking r WHERE r.snapshot_id = s.id AND r.app_id = st.app_id))
+                         AS dropped_out
                 FROM app_chart_state st
                 JOIN v_chart vc ON vc.id = st.chart_id
                 CROSS JOIN LATERAL (SELECT slot_start FROM snapshot
@@ -422,6 +427,7 @@ public class QueryRepository {
                     (Integer) rs.getObject("best_rank"),
                     instant(rs, "best_rank_at"),
                     (Integer) rs.getObject("worst_rank"),
+                    rs.getBoolean("dropped_out"),
                     instant(rs, "first_observed_at"),
                     instant(rs, "in_chart_since"),
                     rs.getBoolean("rising"),
@@ -444,7 +450,7 @@ public class QueryRepository {
                         hours.put(tier == 1 ? "number_one" : "top_" + tier, rs.getBigDecimal("hours").doubleValue());
                     });
             out.add(new ChartPerformance(p.chart(), p.asOf(), p.currentRank(), p.inChart(),
-                    p.change24h(), p.change7d(), p.bestRank(), p.bestRankAt(), p.worstRank(), p.firstObservedAt(),
+                    p.change24h(), p.change7d(), p.bestRank(), p.bestRankAt(), p.worstRank(), p.droppedOut(), p.firstObservedAt(),
                     p.inChartSince(), p.rising(), p.averageRank30d(), hours));
         }
         return out;

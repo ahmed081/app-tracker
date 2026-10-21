@@ -24,6 +24,7 @@
     "lastUpdate": "آخر تحديث",
     "noDescription": "لا يوجد وصف بعد. تُجلب التفاصيل من App Store خلال يوم.",
     "noKeyChanges": "لا توجد تحركات كبيرة بعد. ستظهر هنا عندما يصعد التطبيق أو يهبط.",
+    "noKeyChangesBelowTop": "تغطي أهم التغييرات أفضل {{n}}، ولم يصل هذا التطبيق إليها بعد (أفضل مركز {{best}}).",
     "noRatings": "لم تُجمع تقييمات بعد.",
     "noVersions": "لم يُجمع سجل الإصدارات بعد.",
     "notFound": "لم يظهر هذا التطبيق في أي تصنيف متابَع.",
@@ -32,6 +33,7 @@
     "openInStore": "فتح في App Store",
     "performance": "الوقت في القمة",
     "performanceHint": "إجمالي الوقت في كل فئة منذ بدء المتابعة",
+    "performanceBelowTop": "لم يدخل أفضل {{n}} بعد (أفضل مركز {{best}})، لذا لا وقت في أي فئة.",
     "price": "السعر",
     "ratingAverage": "متوسط التقييم",
     "ratingCount": "التقييمات",
@@ -49,7 +51,8 @@
     "trackedSince": "متابَع منذ",
     "version": "الإصدار {{version}}",
     "versions": "الإصدارات",
-    "worstRank": "أسوأ مركز"
+    "worstRank": "أسوأ مركز",
+    "worstOutOfChart": "خارج القائمة"
   },
   "action": {
     "retry": "إعادة المحاولة"

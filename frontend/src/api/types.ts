@@ -139,6 +139,7 @@ export interface ChartPerformance {
   bestRank: number | null;
   bestRankAt: string | null;
   worstRank: number | null;
+  droppedOut: boolean;                   // missing from a reading since first seen: worse than worstRank
   firstObservedAt: string | null;
   inChartSince: string | null;
   rising: boolean;

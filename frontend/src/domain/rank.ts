@@ -20,6 +20,8 @@ export function placesGained(from: number | null | undefined, to: number | null 
 }
 
 export const TIERS = [1, 5, 10, 25] as const;
+/** Events and tier time cover only these places (the backend's display depth). */
+export const DISPLAY_DEPTH = 25;
 export type Tier = (typeof TIERS)[number];
 
 /** Best tier a rank belongs to: 3 → 5, 8 → 10, 40 → null. */

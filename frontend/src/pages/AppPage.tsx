@@ -5,7 +5,7 @@ import { ArrowLeft, ExternalLink, Star } from 'lucide-react';
 import type { AppResponse, Chart, ChartPerformance, CountryListing, EventRow, VersionsResponse } from '@/api/types';
 import { chartPath, parseChartKey } from '@/domain/charts';
 import { KEY_CHANGE_TYPES, summarize } from '@/domain/history';
-import { tierOf } from '@/domain/rank';
+import { DISPLAY_DEPTH, tierOf } from '@/domain/rank';
 import { useResource } from '@/features/remote/useResource';
 import { flag, useFormat } from '@/i18n/format';
 import { RankHistoryChart, type VersionMark } from '@/components/charts/RankHistoryChart';
@@ -38,6 +38,7 @@ export function AppPage() {
 
 function AppDetails({ app }: { app: AppResponse }) {
   const { t } = useTranslation();
+  const f = useFormat();
   const [params, setParams] = useSearchParams();
   const charts = useResource('charts', NO_PARAMS);
 
@@ -88,7 +89,8 @@ function AppDetails({ app }: { app: AppResponse }) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Panel title={t('app.keyChanges')} description={t('app.keyChangesHint')}>
           {events.isLoading ? <SkeletonRows rows={5} />
-            : <EventList events={chartEvents.filter((e) => KEY_CHANGE_TYPES.has(e.type)).slice(0, 10)} showApp={false} compact empty={t('app.noKeyChanges')} />}
+            : <EventList events={chartEvents.filter((e) => KEY_CHANGE_TYPES.has(e.type)).slice(0, 10)} showApp={false} compact
+              empty={perf && !reachedTop(perf) ? t('app.noKeyChangesBelowTop', { n: DISPLAY_DEPTH, best: f.rank(perf.bestRank) }) : t('app.noKeyChanges')} />}
         </Panel>
         {perf && <PerformancePanel perf={perf} />}
       </div>
@@ -310,6 +312,11 @@ function HistoryPanel({ appleAppId, perf, range, onRange, events, versions, coun
 
 // ------------------------------------------------------------ side panels
 
+/** Events and tier time only exist once an app has been within the display depth. */
+function reachedTop(perf: ChartPerformance): boolean {
+  return perf.bestRank != null && perf.bestRank <= DISPLAY_DEPTH;
+}
+
 function PerformancePanel({ perf }: { perf: ChartPerformance }) {
   const { t } = useTranslation();
   const f = useFormat();
@@ -318,23 +325,27 @@ function PerformancePanel({ perf }: { perf: ChartPerformance }) {
   const maxHours = Math.max(1, ...Object.values(perf.hoursInTier));
   return (
     <Panel title={t('app.performance')} description={t('app.performanceHint')}>
-      <dl className="space-y-2.5">
-        {tiers.map(([key, label]) => {
-          const hours = perf.hoursInTier[key] ?? 0;
-          return (
-            <div key={key} className="grid grid-cols-[5.5rem_minmax(0,1fr)_4.5rem] items-center gap-3 text-[13px]">
-              <dt className="text-ink-2">{label}</dt>
-              <dd className="h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden>
-                <div className="h-full rounded-full bg-series" style={{ width: `${(hours / maxHours) * 100}%` }} />
-              </dd>
-              <dd className="tnum text-end text-ink">{hours > 0 ? f.hours(hours) : '—'}</dd>
-            </div>
-          );
-        })}
-      </dl>
+      {!reachedTop(perf) ? (
+        <p className="text-[13px] text-ink-2">{t('app.performanceBelowTop', { n: DISPLAY_DEPTH, best: f.rank(perf.bestRank) })}</p>
+      ) : (
+        <dl className="space-y-2.5">
+          {tiers.map(([key, label]) => {
+            const hours = perf.hoursInTier[key] ?? 0;
+            return (
+              <div key={key} className="grid grid-cols-[5.5rem_minmax(0,1fr)_4.5rem] items-center gap-3 text-[13px]">
+                <dt className="text-ink-2">{label}</dt>
+                <dd className="h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+                  <div className="h-full rounded-full bg-series" style={{ width: `${(hours / maxHours) * 100}%` }} />
+                </dd>
+                <dd className="tnum text-end text-ink">{hours > 0 ? f.hours(hours) : '—'}</dd>
+              </div>
+            );
+          })}
+        </dl>
+      )}
       <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4 text-[13px]">
         <div><dt className="text-ink-3">{t('app.average30d')}</dt><dd className="tnum mt-0.5 text-[15px] font-semibold text-ink">{perf.averageRank30d != null ? `#${f.decimal1(perf.averageRank30d)}` : '—'}</dd></div>
-        <div><dt className="text-ink-3">{t('app.worstRank')}</dt><dd className="tnum mt-0.5 text-[15px] font-semibold text-ink">{f.rank(perf.worstRank)}</dd></div>
+        <div><dt className="text-ink-3">{t('app.worstRank')}</dt><dd className="tnum mt-0.5 text-[15px] font-semibold text-ink">{perf.droppedOut ? t('app.worstOutOfChart') : f.rank(perf.worstRank)}</dd></div>
         <div><dt className="text-ink-3">{t('app.firstSeen')}</dt><dd className="mt-0.5 text-[15px] font-semibold text-ink">{f.dayMonth(perf.firstObservedAt)}</dd></div>
       </dl>
     </Panel>

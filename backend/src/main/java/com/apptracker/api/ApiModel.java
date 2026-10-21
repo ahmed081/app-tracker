@@ -149,6 +149,7 @@ public final class ApiModel {
             Integer bestRank,
             Instant bestRankAt,
             Integer worstRank,
+            boolean droppedOut,          // missing from a reading since first seen: worse than worstRank
             Instant firstObservedAt,
             Instant inChartSince,
             boolean rising,
