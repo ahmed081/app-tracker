@@ -52,7 +52,7 @@ The collector re-reads its configuration every minute. That is why Settings chan
 
 ## 3. Database (PostgreSQL)
 
-The schema is in `collector/db/schema.sql` and the starting data is in `collector/db/seed.sql`. The backend adds its tables with plain SQL run by the admin (**no Flyway**; the app never changes the schema): `backend/db/schema.sql` (backend tables and `app_backend`'s base rights) and `backend/db/management.sql` (the `setting` table and the Settings rights; safe to run again). Docker runs both on a new database; an existing database needs them run once by hand. A schema change means a new or edited SQL file, applied by hand.
+The schema is in `collector/db/schema.sql` and the starting data is in `collector/db/seed.sql`. The backend adds its tables with plain SQL run by the admin (**no Flyway**; the app never changes the schema): `backend/db/schema.sql` (backend tables and `app_backend`'s base rights) and `backend/db/management.sql` (the `setting` table and the Settings rights; safe to run again). `backend/db/watchlist.sql` and `backend/db/radar.sql` (Radar themes and dismissals) follow the same rule. The real database has a single owner login and no `app_backend` role, so new scripts grant to `app_backend` only `IF EXISTS`. Docker runs both on a new database; an existing database needs them run once by hand. A schema change means a new or edited SQL file, applied by hand.
 
 ### Configuration tables
 
@@ -91,6 +91,7 @@ AND (tracking.all_countries OR tracking_country.active)
 
 - `raw_lookup`, `app_metadata_check`, `app_metadata_version`, `app_rating_daily`
 - `app_chart_state`, `chart_event`, `tier_interval`
+- `radar_theme` (name, keywords, active; 14 seed themes) and `radar_dismissal` (app hidden from the Radar while active). Switched off, never deleted.
 - `setting`: runtime-editable values. Key `event_rules` holds JSON. A missing row means the application.yml defaults apply.
 
 ### Views
@@ -160,10 +161,12 @@ With `backend/db/management.sql`, `app_backend` can also:
     - Conflicts return 409.
     - `PUT /categories/{genreId}` saves a whole category in one transaction: its switch (`genre.enabled`), its chart types (missing rows created, the others switched off) and the depth, interval and countries shared by its chart types. The Tracking page uses only this write.
     - Rebuilding all events runs on a background thread; its progress appears in `/status`.
+- `radar`: the Radar, `/api/radar` (read), `/api/radar/themes` (GET, POST, PUT `/{id}`) and `/api/radar/dismiss`. Computed at read time and cached 10 minutes per parameter set. Pure, unit-tested helpers: `Words` (stop words in `resources/radar/stopwords.txt`), `KnownThemes`, `RadarScorer` (points in the `Reason` enum; "new" means more than 48 h after the chart's first VALID reading, and only for apps that reached the chart's top 75%: the last ranks of the 100-entry feeds churn with old apps; a climb must also end there), `EmergingWords`, `Clusters`, `AbroadNotHere`. Words come from the name plus the first sentence of the listing summary (Apple's feed has no subtitle).
 
 **Access:**
 - `/api/manage/**` and `/api/admin/**` are **open when `ADMIN_KEY` is empty**. This is the owner's explicit choice for now.
 - When `ADMIN_KEY` is set, requests need the header `X-Admin-Key`.
+- Writes to `/api/watch/**`, `/api/alerts/**` and `/api/radar/**` need the key as well; their GETs stay open.
 - `.env.example` ships with the key empty. Before the VPS is public, the owner should set it.
 
 **Tests:**
@@ -215,7 +218,7 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `components/`:
     - `ui/`: Panel, SegmentedControl, Select, Switch, Button, Field/TextInput/ToggleChip, Notice, States, RankDelta, badges.
     - `app/`, `charts/` and `layout/`.
-- `pages/`: Overview, Ranking, Movers, App, Search, NotFound, and `settings/` (Countries, Tracking, Rules, Status, plus the layout).
+- `pages/`: Overview, Ranking, Movers, App, Search, Watchlist, Radar (tabs Radar and Themes; components in `components/radar/`, rules in `domain/radar.ts`), NotFound, and `settings/` (Countries, Tracking, Rules, Status, plus the layout).
     - Settings → Tracking lists each category once (`domain/manage.ts → groupCategories`), with search, an on/off filter and an "Add category" form that searches Apple's genre list.
 
 **Conventions:**
@@ -245,7 +248,7 @@ docker compose logs -f collector backend
 
 The containers use the database named in `.env` (today the existing `app_tracker_db`, one owner login `app_tracker_user`). `DEPLOY.md` is the server guide: Docker install, copying the project, Caddy for HTTPS, firewall, backups (`docker compose --profile tools run --rm -T backup`). Never run a local collector or backend against the same database as the server: the collector's advisory lock makes the second one exit, and two backends would both create events.
 
-There is no database container. A new database is set up by hand with the SQL scripts (DEPLOY.md section 8): the collector's schema and seed, `create-user.sql` / `create-backend-user.sql` for `app_collector` and `app_backend`, then `backend/db/schema.sql` and `backend/db/management.sql`. On an existing database, run `backend/db/management.sql` once as the admin.
+There is no database container. A new database is set up by hand with the SQL scripts (DEPLOY.md section 8): the collector's schema and seed, `create-user.sql` / `create-backend-user.sql` for `app_collector` and `app_backend`, then `backend/db/schema.sql`, `backend/db/management.sql`, `backend/db/watchlist.sql` and `backend/db/radar.sql`. On an existing database, run the missing ones once as the admin (all are safe to run again).
 
 Secrets live only in `.env`. It is git-ignored; set it to `chmod 600`. Use only letters, digits, `-` and `_` in passwords.
 
@@ -300,9 +303,10 @@ The earlier work was done in a sandbox that could not reach Apple or Maven Centr
     - In scope: a shared watchlist, alert rules, and alerts shown in the app.
     - Out of scope: accounts, email, Telegram.
     - The M9 section mentions "Migration `V4__watchlist.sql` (Flyway)". There is no Flyway (section 3): write that schema as `backend/db/watchlist.sql`, applied by hand like `management.sql`.
-9. **Milestone 10: Radar (spotting new niches).** Requested, not started. The spec is the section **"Milestone 10"** at the end of this file.
-    - A new `/radar` page, read-only, computed at read time from existing data.
-    - It is an addition: **change nothing else.**
+9. **Milestone 10: Radar (spotting new niches).** Built (backend and frontend). The spec is the section **"Milestone 10"** at the end of this file.
+    - `radar.sql` is applied on the server (2026-10-23) and the Radar runs there (about 0.5 s uncached, cached 10 minutes). Checked against real data: bottom-of-chart churn no longer counts as new, words seen abroad need 3 apps, and "in the Top 25 since" is null when it only means "since tracking began".
+    - Not done yet: `RadarMigrationTest` was not re-run on the final script; rule tuning once there are 2+ weeks of data.
+    - The frontend was viewed against the fake API (`mock/mock-radar-api.ts`) in English and Arabic.
 
 ## 11. Working agreements with the owner
 

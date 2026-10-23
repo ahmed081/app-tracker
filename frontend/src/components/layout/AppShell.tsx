@@ -48,6 +48,7 @@ export function AppShell() {
             {chart && <NavLink to={chartPath(chart.key)} end className={navItem}>{t('nav.ranking')}</NavLink>}
             {chart && <NavLink to={`${chartPath(chart.key)}/movers`} className={navItem}>{t('nav.movers')}</NavLink>}
             <NavLink to="/watchlist" className={navItem}>{t('nav.watchlist')}</NavLink>
+            <NavLink to="/radar" className={navItem}>{t('nav.radar')}</NavLink>
           </nav>
           <form role="search" onSubmit={onSearch} className="order-last w-full sm:order-none sm:ms-auto sm:w-72">
             <label htmlFor="app-search" className="sr-only">{t('search.label')}</label>

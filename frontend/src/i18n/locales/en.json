@@ -410,6 +410,7 @@
     "main": "Main",
     "movers": "Movers",
     "overview": "Overview",
+    "radar": "Radar",
     "ranking": "Ranking",
     "settings": "Settings",
     "skip": "Skip to content",
@@ -466,6 +467,160 @@
       "3m": "3M",
       "1y": "1Y",
       "all": "All"
+    }
+  },
+  "radar": {
+    "title": "Radar",
+    "subtitle": "Things that don’t fit yet: new apps that climb, new words, look-alike apps and what ranks abroad. Each app says why it is here.",
+    "tabs": "Radar views",
+    "tab": {
+      "radar": "Radar",
+      "themes": "Themes"
+    },
+    "country": "Country",
+    "scope": "Categories",
+    "allCategories": "All tracked categories",
+    "window": {
+      "7d": "7D",
+      "14d": "14D",
+      "30d": "30D"
+    },
+    "hideKnown": "Hide known themes",
+    "showDismissed": "Show dismissed",
+    "asOf": "Updated {{when}}",
+    "reasonsLabel": "Why it is on the Radar",
+    "reason": {
+      "NEW_APP": "New app",
+      "NEW_IN_CHARTS": "New in charts",
+      "CLIMBING": "Climbing",
+      "STEADY": "Steady",
+      "RATINGS_GROWING": "Ratings growing",
+      "RATINGS_FAST": "Fast ratings",
+      "UNKNOWN_THEME": "Unknown theme",
+      "HAS_FOLLOWERS": "Has followers",
+      "MULTI_COUNTRY": "Several countries",
+      "NEW_DEVELOPER": "New developer"
+    },
+    "reasonHint": {
+      "NEW_APP": "Released 90 days ago or less",
+      "NEW_IN_CHARTS": "First seen in these charts during the period",
+      "CLIMBING": "Gained 10 places or more, or rose from the bottom half of the chart to the top half",
+      "STEADY": "Its rank improved in at least 60% of the readings",
+      "RATINGS_GROWING": "At least 30% and 20 more ratings in 7 days",
+      "RATINGS_FAST": "Its rating growth is in the top 10% of ranked apps here",
+      "UNKNOWN_THEME": "Its name matches none of the known themes",
+      "HAS_FOLLOWERS": "Apps from other developers that look like it came after it",
+      "MULTI_COUNTRY": "Ranks in 2 countries or more",
+      "NEW_DEVELOPER": "The developer is new to the tracker"
+    },
+    "dismiss": "Hide {{app}} from the Radar",
+    "undismiss": "Show {{app}} on the Radar again",
+    "fromRank": "from {{rank}}",
+    "ageDays_one": "{{count}} day old",
+    "ageDays_other": "{{count}} days old",
+    "ratingsGained_one": "+{{count}} rating in 7 days",
+    "ratingsGained_other": "+{{count}} ratings in 7 days",
+    "ratingsGainedPercent_one": "+{{count}} rating in 7 days ({{percent}}%)",
+    "ratingsGainedPercent_other": "+{{count}} ratings in 7 days ({{percent}}%)",
+    "firstSeen": "first seen {{when}}",
+    "score": "Score {{score}}",
+    "scoreHint": "The sum of the points of its reasons",
+    "newApps_one": "{{count}} new app",
+    "newApps_other": "{{count}} new apps",
+    "developers_one": "{{count}} developer",
+    "developers_other": "{{count}} developers",
+    "followers_one": "{{count}} follower",
+    "followers_other": "{{count}} followers",
+    "countries_one": "{{count}} country",
+    "countries_other": "{{count}} countries",
+    "hiddenByScore_one": "{{count}} app with a score below {{score}} is hidden.",
+    "hiddenByScore_other": "{{count}} apps with a score below {{score}} are hidden.",
+    "firstAppeared": "first seen {{when}}",
+    "wordApps": "Apps using “{{word}}”",
+    "saveAsTheme": "Save as theme",
+    "savedAsTheme": "Saved as theme",
+    "clusterWord": "They share “{{word}}”",
+    "clusterNames": "Similar names",
+    "originatorSince": "First one seen {{when}}",
+    "clusterPlaces": "Places gained",
+    "clusterRatings": "Ratings (7 days)",
+    "clusterCountries": "Countries",
+    "showAll": "Show all",
+    "showingAll": "Showing every app, whatever its score.",
+    "hideLowScores": "Hide low scores",
+    "empty": {
+      "needsHistory": "Not enough history yet: the Radar needs about {{days}} days of collection."
+    },
+    "noCharts": {
+      "title": "Nothing is tracked in this country",
+      "body": "The Radar looks at the charts collected in the selected country. Turn on a category there to fill it.",
+      "cta": "Open Settings → Tracking"
+    },
+    "history": {
+      "shortTitle": "Not enough history yet",
+      "shortBody_one": "Only {{count}} day of data so far (since {{since}}). The Radar needs about {{days}} days of collection: until then most sections stay empty or show early guesses.",
+      "shortBody_other": "Only {{count}} days of data so far (since {{since}}). The Radar needs about {{days}} days of collection: until then most sections stay empty or show early guesses.",
+      "baselineShort_one": "Emerging words compare new apps with those of the 60 days before the period, but there is only {{count}} day of data (since {{since}}). Treat new words with care.",
+      "baselineShort_other": "Emerging words compare new apps with those of the 60 days before the period, but there are only {{count}} days of data (since {{since}}). Treat new words with care."
+    },
+    "newcomers": {
+      "title": "Newcomers",
+      "hint": "Apps that are new (released in the last 90 days, or new in these charts) and ranked now.",
+      "empty": "No new app ranks here now. New apps appear once they enter a tracked chart."
+    },
+    "rising": {
+      "title": "Rising from the bottom",
+      "hint": "From the bottom half of a chart at the start of the period to the top half now, climbing steadily.",
+      "empty": "No app climbed steadily from the bottom half to the top half in this period."
+    },
+    "words": {
+      "title": "Emerging words",
+      "hint": "Words that 3 new apps or more from 2 developers or more use, and that the apps of the 60 days before hardly used.",
+      "empty": "No new word yet. Words appear when several new apps from different developers share one."
+    },
+    "clusters": {
+      "title": "Possible new niches",
+      "hint": "One app is a hit; the copies make the niche. The first app seen with a rare word or name, and the later apps of other developers that look like it.",
+      "empty": "No group of look-alike apps yet. A niche shows once 2 apps from other developers follow the first one."
+    },
+    "abroad": {
+      "title": "Seen abroad, not here yet",
+      "hint": "Apps in the Top 25 of another country, in a category also tracked here, that never ranked in {{country}}.",
+      "oneCountry": "Only one country is collected, so there is nothing to compare with yet. Turn on another country to see what ranks there but not here.",
+      "oneCountryScript": "To track every category in the United States, the admin can run",
+      "oneCountryCta": "Open Settings → Countries",
+      "empty": "Nothing ranks abroad that hasn’t ranked here too.",
+      "wordsTitle": "Words seen abroad, not here yet",
+      "since": "in the Top 25 since {{when}}",
+      "sinceStart": "in the Top 25 since tracking began"
+    },
+    "themes": {
+      "listTitle": "Known themes",
+      "listHint": "Apps whose name contains a keyword have a known theme. Their words leave “Emerging words” while “Hide known themes” is on. Switch a theme off to stop using it.",
+      "activeLabel": "Use the theme {{name}}",
+      "off": "Off",
+      "keywordsOf": "Keywords of {{name}}",
+      "removeKeyword": "Remove “{{keyword}}”",
+      "lastKeyword": "A theme needs at least one keyword",
+      "addKeyword": "Add a keyword",
+      "addKeywordTo": "Add a keyword to {{name}}",
+      "addTitle": "Add a theme",
+      "addHint": "A niche you already know, e.g. “Tongits” with the keyword “tongits”. Keywords can be several words, like “lucky 9”.",
+      "name": "Name",
+      "keywords": "Keywords",
+      "keywordsHint": "Press Enter or type a comma after each keyword.",
+      "add": "Add theme",
+      "added": "Theme added.",
+      "duplicate": "A theme with this name already exists.",
+      "saveFailed": "The change could not be saved. Try again.",
+      "error": {
+        "required": "Required",
+        "tooLong": "At most 60 characters",
+        "noKeyword": "Add at least one keyword",
+        "keywordInvalid": "Each keyword needs a letter or digit and at most 40 characters",
+        "tooManyKeywords": "At most {{max}} keywords",
+        "duplicate": "A theme with this name already exists"
+      }
     }
   },
   "ranking": {

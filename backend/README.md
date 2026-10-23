@@ -79,9 +79,21 @@ One shared watchlist, stored on the server. An app is followed in one chart, or 
 | `POST /api/watch` | Follow `{kind: "APP", appleAppId, chartKey?}` or `{kind: "CHART", chartKey}`; returns the watch |
 | `PUT /api/watch/{id}` | `{active?, rule?: {preset, eventTypes?, minPlaces?, tiers?}}`: unfollow, or change an app watch's alert rule (presets IMPORTANT, ALL, CUSTOM); 400 with `{"errors": {field: message}}` |
 
+### Radar API (`/api/radar`)
+
+Computed at read time from the existing history (VALID readings only) and cached for 10 minutes per parameter set. Themes are switched off, never deleted.
+
+| Endpoint | Returns / does |
+|---|---|
+| `GET /api/radar?country=ph&genre=&window=14d&hideKnown=true&showDismissed=false&minScore=4` | `{newcomers, risingFromBottom, emergingWords, clusters, abroad, abroadWords, dataSince, hiddenByScore, notes}`; app rows carry `reasons[]`, `score` and a trend. `window` is 7d, 14d or 30d; `minScore=0` shows every app |
+| `GET /api/radar/themes` | Every theme, switched-off ones included |
+| `POST /api/radar/themes` | Create `{name, keywords}`; 400 with field errors, 409 on a duplicate name |
+| `PUT /api/radar/themes/{id}` | Change `{name?, keywords?, active?}` |
+| `POST /api/radar/dismiss` | `{appleAppId, active}`: true hides the app from the Radar, false shows it again |
+
 ### Access
 
-`/api/manage/**` and `/api/admin/**` need the header `X-Admin-Key: <ADMIN_KEY>` when `ADMIN_KEY` is set. So do writes to `/api/watch/**` (and, later, `/api/alerts/**`); their `GET`s stay open. **With no `ADMIN_KEY` they are open** to anyone who can reach the API: set it before the server is public. Responses carry an `ETag`, so repeated requests between readings get `304 Not Modified`.
+`/api/manage/**` and `/api/admin/**` need the header `X-Admin-Key: <ADMIN_KEY>` when `ADMIN_KEY` is set. So do writes to `/api/watch/**`, `/api/radar/**` (and, later, `/api/alerts/**`); their `GET`s stay open. **With no `ADMIN_KEY` they are open** to anyone who can reach the API: set it before the server is public. Responses carry an `ETag`, so repeated requests between readings get `304 Not Modified`.
 
 Event importance: 3 high (#1, Top 10/Top 5 crossings), 2 medium (entries, exits, big moves, rising), 1 low (ordinary moves, new best rank), 0 none (first observed).
 

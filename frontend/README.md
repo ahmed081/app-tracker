@@ -14,6 +14,7 @@ The dashboard and app pages of the App Store ranking tracker. It reads only from
 | `/apps/{appleAppId}?chart=…&range=7d` | App details: identity and context, current rank, ranking history graph, key changes, time at the top, ratings, versions, about |
 | `/search?q=…` | Apps by name, developer, Apple ID or bundle ID |
 | `/watchlist` | My watchlist (shared by everyone): followed apps, a line per chart (rank, change over the period, 7-day trend, last key move, alert rule), and followed charts (current #1, latest big moment); chart filter and period |
+| `/radar` | Radar: newcomers, rising from the bottom, emerging words (save as theme), possible new niches, seen abroad; each app with its reason chips, Follow and Dismiss. Country, categories, period (7D / 14D / 30D), hide known themes, show dismissed. A Themes tab manages the known themes |
 | `/settings/tracking` · `countries` · `rules` · `status` | Settings: what is tracked and how often, countries, categories, event rules, and collection health (asks for the admin key when the server requires one) |
 
 The chart, the period (1H / 24H / 7D / 30D), the noise filter, the language and the theme are remembered in the browser.
@@ -28,7 +29,7 @@ npm test             # unit tests
 npm run build        # type-check and build to dist/
 ```
 
-The fake API serves recorded responses in exactly the backend's shapes (10 days of simulated hourly data for Casino Top Free, Philippines). The Settings API and the watchlist are faked in memory (`mock/mock-manage-api.ts`, `mock/mock-watch-api.ts`; the fake watchlist starts with a few watches): changes last until the dev server restarts.
+The fake API serves recorded responses in exactly the backend's shapes (10 days of simulated hourly data for Casino Top Free, Philippines). The Settings API, the watchlist and the Radar are faked in memory (`mock/mock-manage-api.ts`, `mock/mock-watch-api.ts`, `mock/mock-radar-api.ts`; the fake watchlist starts with a few watches, the fake Radar has one country so "abroad" shows its empty state): changes last until the dev server restarts.
 
 `dev:mock` sets an environment variable the Unix way: on Windows, run it from Git Bash.
 
@@ -56,17 +57,18 @@ Static hosting (S3, Netlify, any web server) also works: upload `dist/`, edit `d
 ```
 src/
 ├── api/            the only code that knows backend URLs: types (mirror of the API), fetch client, one function per endpoint
-│                   (trackerApi.ts for reads, manageApi.ts for Settings reads and writes, watchApi.ts for the watchlist);
+│                   (trackerApi.ts for reads, manageApi.ts for Settings reads and writes, watchApi.ts for the watchlist, radarApi.ts for the Radar);
 │                   resources.ts lists every cached read and every write
 ├── app/            store (Redux Toolkit + saga middleware), typed hooks, routes
 ├── config/         runtime configuration (config.js)
 ├── domain/         pure rules: rank changes, tiers, chart keys, history summaries, which events matter,
 │                   manage.ts (which charts get collected, previews, validation, collector health) and
-│                   watch.ts (which watch a Follow button controls, watchlist filters) (unit tested)
+│                   watch.ts (which watch a Follow button controls, watchlist filters) and
+│                   radar.ts (reason chips, "not enough history", sorting, theme validation) (unit tested)
 ├── features/
 │   ├── remote/       one cache for every API resource: slice + saga (fetching, de-duplication,
 │   │                 refresh every 5 min and when the tab comes back) + useResource() hook
-│   ├── manage/       saving (Settings and watchlist): slice + saga (call the API, then mark affected data stale) +
+│   ├── manage/       saving (Settings, watchlist, Radar): slice + saga (call the API, then mark affected data stale) +
 │   │                 useMutation() hook; a 401 opens the admin-key prompt on any page (key kept in sessionStorage)
 │   ├── preferences/  language, theme, chart, period, noise filter, last visit; saga applies and saves them
 │   └── charts/       which chart is selected (URL → remembered → first with data)

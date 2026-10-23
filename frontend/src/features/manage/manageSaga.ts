@@ -9,6 +9,7 @@ import { manageActions, type MutationName, type MutationRequest } from './manage
 const MANAGE_READS: ResourceName[] = ['manageCountries', 'manageGenres', 'manageTracking', 'manageRules', 'manageStatus'];
 const CONFIG: ResourceName[] = ['manageCountries', 'manageGenres', 'manageTracking', 'manageStatus', 'charts'];
 const WATCH: ResourceName[] = ['watchlist', 'watchStatus'];
+const RADAR: ResourceName[] = ['radar', 'radarThemes'];
 
 /** What each save changes. Configuration changes reach the chart list once the collector syncs (within a minute). */
 export const INVALIDATES: Record<MutationName, ResourceName[]> = {
@@ -22,6 +23,9 @@ export const INVALIDATES: Record<MutationName, ResourceName[]> = {
   refreshMetadata: ['manageStatus'],
   follow: WATCH,
   updateWatch: WATCH,
+  createTheme: RADAR,
+  updateTheme: RADAR,
+  dismissApp: ['radar'],
 };
 
 function* onMutation(action: ReturnType<typeof manageActions.mutationRequested>) {

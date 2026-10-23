@@ -13,6 +13,7 @@ export const router = createBrowserRouter([
       { path: '/charts/:country/:genreId/:type/movers', lazy: async () => ({ Component: (await import('@/pages/MoversPage')).MoversPage }) },
       { path: '/apps/:appleAppId', lazy: async () => ({ Component: (await import('@/pages/AppPage')).AppPage }) },
       { path: '/watchlist', lazy: async () => ({ Component: (await import('@/pages/WatchlistPage')).WatchlistPage }) },
+      { path: '/radar', lazy: async () => ({ Component: (await import('@/pages/RadarPage')).RadarPage }) },
       { path: '/search', lazy: async () => ({ Component: (await import('@/pages/SearchPage')).SearchPage }) },
       {
         path: '/settings',

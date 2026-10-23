@@ -1,4 +1,4 @@
-// Saving (Settings, watchlist): one entry per form or switch (its id), plus
+// Saving (Settings, watchlist, Radar): one entry per form or switch (its id), plus
 // the admin-key prompt shown when the server answers 401.
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { WriteApi } from '@/api/resources';
