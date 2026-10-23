@@ -40,14 +40,14 @@ The collector re-reads its configuration every minute. That is why Settings chan
 
 - **Charts.** URL pattern:
   `https://itunes.apple.com/{country}/rss/{topfreeapplications|toppaidapplications|topgrossingapplications}/limit=200/genre={id}/json`
-  - Category feeds return about 100 entries, whatever limit you ask for.
-  - `feed.entry` can be an array, a single object, or missing.
-  - The content type is `text/javascript`.
-  - `feed.updated.label` has a non-UTC offset.
+    - Category feeds return about 100 entries, whatever limit you ask for.
+    - `feed.entry` can be an array, a single object, or missing.
+    - The content type is `text/javascript`.
+    - `feed.updated.label` has a non-UTC offset.
 - **App details.** `https://itunes.apple.com/lookup?id=a,b&country=ph&entity=software`
 - **Genre tree.** `https://itunes.apple.com/WebObjects/MZStoreServices.woa/ws/genres?id=36`
-  - Games is 6014.
-  - New genres arrive **disabled**.
+    - Games is 6014.
+    - New genres arrive **disabled**.
 - Do **not** use `rss.marketingtools.apple.com`: it has no genre filter.
 
 ## 3. Database (PostgreSQL)
@@ -58,13 +58,13 @@ The schema is in `collector/db/schema.sql` and the starting data is in `collecto
 
 - `country(code, name, enabled)`
 - `genre(id, name, parent_id, enabled, available_on_apple)`
-  - `available_on_apple` is set only by the genre sync.
+    - `available_on_apple` is set only by the genre sync.
 - `tracking(genre_id, chart_type, depth ≤200, interval_minutes, all_countries, active)`
-  - Unique on `(genre_id, chart_type)`.
+    - Unique on `(genre_id, chart_type)`.
 - `tracking_country(tracking_id, country_code, active)`
 - `chart`
-  - Generated from the configuration. Never edit it by hand.
-  - Unique on `(country, genre, type)`.
+    - Generated from the configuration. Never edit it by hand.
+    - Unique on `(country, genre, type)`.
 
 **A chart is collected only if every switch is on.** The view `v_tracking_target` applies this rule, and the frontend repeats it in `domain/manage.ts`:
 
@@ -76,12 +76,12 @@ AND (tracking.all_countries OR tracking_country.active)
 ### History (append-only)
 
 - `raw_reading` is the permanent archive: Apple's response, exactly as received.
-  - Key: `(chart_id, slot_start)`.
-  - The only allowed update: a FAILED attempt replaced by a later successful one.
+    - Key: `(chart_id, slot_start)`.
+    - The only allowed update: a FAILED attempt replaced by a later successful one.
 - `snapshot`: one per reading.
-  - Status is VALID, INCOMPLETE or FAILED. INCOMPLETE means fewer than 25 entries or bad entries.
-  - `reasons` is text, e.g. `below_min_entries:12` or `fetch_error:HTTP 503`.
-  - `processed_at` is set by the backend.
+    - Status is VALID, INCOMPLETE or FAILED. INCOMPLETE means fewer than 25 entries or bad entries.
+    - `reasons` is text, e.g. `below_min_entries:12` or `fetch_error:HTTP 503`.
+    - `processed_at` is set by the backend.
 - `developer` and `app`: the **Apple ID is the identity**.
 - `app_listing_version`: versions are content-hashed.
 - `ranking(snapshot_id, rank, app_id, ...)`.
@@ -156,10 +156,10 @@ With `backend/db/management.sql`, `app_backend` can also:
 - `events`: the engine, the processor (runs every minute) and its repository.
 - `api`: the public read API. Charts: `/api/charts/{country}/{genreId}/{type}/{ranking|headlines|movers|events|bump}`. Apps: `/api/apps/{id}[/history|/events|/versions|/ratings]`, `/api/search`, `/api/admin/...`.
 - `manage`: the Settings API, `/api/manage/{countries,genres,tracking,categories/{genreId},rules,status,actions/*}`: `ManageController`, `ManageService` (validation), `ManageRepository`, `RulesStore`, `EventRules`, `RebuildJob`.
-  - Validation errors return 400 with `{"errors": {field: message}}`.
-  - Conflicts return 409.
-  - `PUT /categories/{genreId}` saves a whole category in one transaction: its switch (`genre.enabled`), its chart types (missing rows created, the others switched off) and the depth, interval and countries shared by its chart types. The Tracking page uses only this write.
-  - Rebuilding all events runs on a background thread; its progress appears in `/status`.
+    - Validation errors return 400 with `{"errors": {field: message}}`.
+    - Conflicts return 409.
+    - `PUT /categories/{genreId}` saves a whole category in one transaction: its switch (`genre.enabled`), its chart types (missing rows created, the others switched off) and the depth, interval and countries shared by its chart types. The Tracking page uses only this write.
+    - Rebuilding all events runs on a background thread; its progress appears in `/status`.
 
 **Access:**
 - `/api/manage/**` and `/api/admin/**` are **open when `ADMIN_KEY` is empty**. This is the owner's explicit choice for now.
@@ -198,25 +198,25 @@ With `backend/db/management.sql`, `app_backend` can also:
 
 **Structure (`src/`):**
 - `api/`
-  - `trackerApi.ts` (reads) and `manageApi.ts` (Settings reads and writes) are the **only modules that know URLs**.
-  - `types.ts` and `manageTypes.ts` mirror the backend records **by hand**.
+    - `trackerApi.ts` (reads) and `manageApi.ts` (Settings reads and writes) are the **only modules that know URLs**.
+    - `types.ts` and `manageTypes.ts` mirror the backend records **by hand**.
 - `features/remote/`: one cache for every GET resource.
-  - Use it as `useResource('ranking', params)`.
-  - The saga handles fetching, de-duplication, a 60-second freshness window, refresh every 5 minutes and when the tab comes back, and invalidation.
+    - Use it as `useResource('ranking', params)`.
+    - The saga handles fetching, de-duplication, a 60-second freshness window, refresh every 5 minutes and when the tab comes back, and invalidation.
 - `features/manage/`: saving.
-  - Use it as `useMutation(op, id).run(params)`.
-  - The saga calls the API, then invalidates the affected resources.
-  - A 401 response triggers the admin-key prompt. The key is kept in sessionStorage only.
+    - Use it as `useMutation(op, id).run(params)`.
+    - The saga calls the API, then invalidates the affected resources.
+    - A 401 response triggers the admin-key prompt. The key is kept in sessionStorage only.
 - `features/preferences/`: language, theme, period, noise filter, chart and last visit, persisted in localStorage.
 - `domain/`: pure, unit-tested rules: ranks, history gaps and markers, event messages, and `manage.ts`, which holds the target-chart rule, previews, validation, collector health and reason codes.
 - `i18n/`: `locales/en.json` and `ar.json`.
-  - A test enforces that both files have the same keys, that Arabic has all six plural forms, and that every literal `t('...')` key used in the code exists.
-  - Arabic uses Western digits (`ar-u-nu-latn`).
+    - A test enforces that both files have the same keys, that Arabic has all six plural forms, and that every literal `t('...')` key used in the code exists.
+    - Arabic uses Western digits (`ar-u-nu-latn`).
 - `components/`:
-  - `ui/`: Panel, SegmentedControl, Select, Switch, Button, Field/TextInput/ToggleChip, Notice, States, RankDelta, badges.
-  - `app/`, `charts/` and `layout/`.
+    - `ui/`: Panel, SegmentedControl, Select, Switch, Button, Field/TextInput/ToggleChip, Notice, States, RankDelta, badges.
+    - `app/`, `charts/` and `layout/`.
 - `pages/`: Overview, Ranking, Movers, App, Search, NotFound, and `settings/` (Countries, Tracking, Rules, Status, plus the layout).
-  - Settings → Tracking lists each category once (`domain/manage.ts → groupCategories`), with search, an on/off filter and an "Add category" form that searches Apple's genre list.
+    - Settings → Tracking lists each category once (`domain/manage.ts → groupCategories`), with search, an on/off filter and an "Add category" form that searches Apple's genre list.
 
 **Conventions:**
 - Use logical CSS properties (start/end) so the layout mirrors in right-to-left.
@@ -264,7 +264,7 @@ The earlier work was done in a sandbox that could not reach Apple or Maven Centr
 
 **Never verified:**
 1. **The backend starting under real Spring Boot against PostgreSQL.** It now compiles and its unit tests pass with real Maven, but it has never been started. Expect startup or SQL errors: bean wiring, Jackson records, `ProblemDetail`, `@ConfigurationProperties` binding.
-   - The **Settings feature** (backend `manage` package, `management.sql`, frontend `pages/settings`) was written after the original sandbox work. It compiles, its unit tests pass, and its screens were viewed against the fake API in English and Arabic. It has **not** run against PostgreSQL: check the column-level grants (an UPDATE that touches an ungranted column fails), the `COALESCE(CAST(:x AS ...))` updates, and the `setting` jsonb round trip.
+    - The **Settings feature** (backend `manage` package, `management.sql`, frontend `pages/settings`) was written after the original sandbox work. It compiles, its unit tests pass, and its screens were viewed against the fake API in English and Arabic. It has **not** run against PostgreSQL: check the column-level grants (an UPDATE that touches an ungranted column fails), the `COALESCE(CAST(:x AS ...))` updates, and the `setting` jsonb round trip.
 2. **The collector against live Apple.** Confirm the PH feeds respond, how many entries they return (100 or 200), and the genre sync.
 3. **The frontend against the real backend.** The hand-written TypeScript types may not match the JSON the backend actually returns.
 4. **An end-to-end run on real data** (Docker Compose, all four services).
@@ -272,31 +272,37 @@ The earlier work was done in a sandbox that could not reach Apple or Maven Centr
 ## 10. What is left (in priority order)
 
 1. **Make it run for real.**
-   - Run `mvn verify` and fix any errors (done: it builds; 26 tests pass).
-   - Run `docker compose up -d --build`.
-   - Check the logs of all services.
-   - Hit the API (`curl /api/charts`, `/ranking`, `/api/manage/status`).
-   - Open the web app and click through every page, including Settings in both languages.
-   - Fix any mismatch between `frontend/src/api/*Types.ts` and the real JSON.
+    - Run `mvn verify` and fix any errors (done: it builds; 26 tests pass).
+    - Run `docker compose up -d --build`.
+    - Check the logs of all services.
+    - Hit the API (`curl /api/charts`, `/ranking`, `/api/manage/status`).
+    - Open the web app and click through every page, including Settings in both languages.
+    - Fix any mismatch between `frontend/src/api/*Types.ts` and the real JSON.
 2. **Collector live check.**
-   - Run `sync-genres`.
-   - Run one `collect`.
-   - Confirm `snapshot` status counts and `entry_count`.
-   - Adjust the depth defaults if the PH feeds cap at 100.
+    - Run `sync-genres`.
+    - Run one `collect`.
+    - Confirm `snapshot` status counts and `entry_count`.
+    - Adjust the depth defaults if the PH feeds cap at 100.
 3. **VPS deployment.** `DEPLOY.md` is a manual guide: Docker install, Caddy for HTTPS, a firewall allowing only ports 22, 80 and 443, and a daily `pg_dump` with rotation.
-   - Not done yet: the images have never been built or run (Docker wasn't running when this was written), and there is no automated `deploy.sh` and no health-check alerting.
-   - The owner hasn't yet given the VPS's Linux version, domain or memory. **Ask the owner** for them; never ask for passwords or SSH keys in chat.
+    - Not done yet: the images have never been built or run (Docker wasn't running when this was written), and there is no automated `deploy.sh` and no health-check alerting.
+    - The owner hasn't yet given the VPS's Linux version, domain or memory. **Ask the owner** for them; never ask for passwords or SSH keys in chat.
 4. **Monitoring.** Alert when collection stops, for example when the last reading is older than 2 hours or there are delayed charts. Add a daily canary check of one feed. The Status page shows this today, but nothing notifies anyone.
 5. **Snapshot validation.**
-   - The original design had extra "partial" and "suspicious" statuses: for example a sudden drop in entry count, or a chart identical to the previous hour's for many hours.
-   - Today only VALID, INCOMPLETE and FAILED exist, so a strange but complete-looking reading could create false events.
+    - The original design had extra "partial" and "suspicious" statuses: for example a sudden drop in entry count, or a chart identical to the previous hour's for many hours.
+    - Today only VALID, INCOMPLETE and FAILED exist, so a strange but complete-looking reading could create false events.
 6. **Rule tuning** after 1–2 weeks of real data: rising, big move, noise in the event feed. This is done in Settings; recompute if needed.
 7. **Smaller items:**
-   - Regenerate the fake-API fixtures from real data. Fixtures have no app icons; real icons come from Lookup.
-   - Consider generating the frontend types from the OpenAPI spec (`/v3/api-docs`).
-   - Decide how long to keep `raw_reading` bodies.
-   - Update the functional and architecture documents to match the implementation. They predate the Node collector, the three statuses, the in-backend Lookup and Redux.
-8. **Milestone 9 (not started):** user accounts, watchlists, alerts and a notifier. `chart_event.notified` already exists for the notifier. The admin key would then give way to real logins.
+    - Regenerate the fake-API fixtures from real data. Fixtures have no app icons; real icons come from Lookup.
+    - Consider generating the frontend types from the OpenAPI spec (`/v3/api-docs`).
+    - Decide how long to keep `raw_reading` bodies.
+    - Update the functional and architecture documents to match the implementation. They predate the Node collector, the three statuses, the in-backend Lookup and Redux.
+8. **Milestone 9: Watchlist and Alert rules.** Approved, not started. The spec is the section **"Milestone 9"** at the end of this file.
+    - In scope: a shared watchlist, alert rules, and alerts shown in the app.
+    - Out of scope: accounts, email, Telegram.
+    - The M9 section mentions "Migration `V4__watchlist.sql` (Flyway)". There is no Flyway (section 3): write that schema as `backend/db/watchlist.sql`, applied by hand like `management.sql`.
+9. **Milestone 10: Radar (spotting new niches).** Requested, not started. The spec is the section **"Milestone 10"** at the end of this file.
+    - A new `/radar` page, read-only, computed at read time from existing data.
+    - It is an addition: **change nothing else.**
 
 ## 11. Working agreements with the owner
 
@@ -495,3 +501,239 @@ alert_rule
 
 Update the READMEs (endpoint tables, screens) and `CLAUDE.md` (sections 5, 7 and 10) when done.
 
+# Milestone 10: Radar (spotting new niches)
+
+The owner requested this on 2026-10-23.
+
+**Keep everything else as it is.** Do not change existing screens, rules, the collector or Milestone 9's scope. The Radar is an **addition**: one new page, one SQL file, and one new read-only backend package.
+
+## 1. Goal
+
+A new niche has no name, no group of similar apps, often no category of its own, and no history. The Radar finds **things that don't fit yet** in data the tracker already collects:
+
+| Data | Where it is |
+|---|---|
+| Ranks | `ranking`, `snapshot` |
+| When the tracker first saw an app | `app.first_seen_at` |
+| Release date | `app.release_date` |
+| Names and descriptions | `app_listing_version` (name, summary), `app_metadata_version` (description) |
+| Developers | `developer` |
+| Daily rating counts | `app_rating_daily` |
+| Several countries and categories | `chart` |
+
+It shows **why** each item is flagged (reason chips), not just a score.
+
+No new external data source: no Google Trends, no social media, no Apple search API in v1.
+
+**Collection interval:** the default is 12 hours (section 1), so the Radar must reason in **time** (days), not in a fixed number of readings. Where a rule needs readings, it counts the VALID readings actually present in the period, whatever the interval.
+
+## 2. The Radar page (`/radar`, new menu item "Radar")
+
+### Top bar (reuse existing components)
+- **Country:** default `ph`.
+- **Scope:** all tracked categories in that country (default), or one category.
+- **Period:** 7D / 14D (default) / 30D.
+- **Toggle:** "Hide known themes" (on by default).
+
+### Five sections, each a `Panel`
+
+**1. Newcomers.** Apps that are new **and** gaining.
+- **Who appears:**
+    - first seen by the tracker within the period, **or** released by Apple within the last 90 days;
+    - currently ranked in at least one active chart of the scope.
+- **Each row shows:**
+    - app (icon, name, developer), best current rank and chart;
+    - rank change over the period;
+    - rating-count growth over 7 days (absolute and %);
+    - age in days;
+    - reason chips.
+- **Sorting:** by radar score (see §3).
+
+**2. Rising from the bottom.**
+- Apps that were in the **bottom half** of a chart's depth (e.g. ranks 51–100 for depth 100) at the start of the period and are now in the **top half**.
+- Their rank must also improve in **at least 60% of the steps** between consecutive VALID readings in the period (steady, not one jump), with at least 4 readings.
+- These are often new kinds of apps before anyone notices.
+
+**3. Emerging words.** New vocabulary.
+- **The words:** taken from the name and the summary/subtitle of apps **first seen within the period**, compared with apps first seen in the 60 days before.
+- **A word is flagged when all of these hold:**
+    - it appears in **≥ 3 new apps** from **≥ 2 different developers**;
+    - it appeared in **≤ 1 app** in the baseline;
+    - it is not a stop word and not part of a known theme (when "Hide known themes" is on).
+- **Each word row shows:**
+    - the word;
+    - the number of new apps and developers;
+    - its first appearance;
+    - the apps, as small icons linking to their pages.
+- **Action:** "Save as theme" (see §4).
+
+**4. Possible new niches.** Clusters.
+- **What a cluster is:**
+    - one **originator**: the app with that word, or a similar name, that was seen first;
+    - its **followers**: other apps from **other developers**, first seen after the originator, within the period plus 30 days.
+- **Similar name:** shares a rare word (an emerging word, or a word used by ≤ 2 apps overall), or the normalised names are close (Jaro-Winkler ≥ 0.9 after removing stop words).
+- **When a cluster shows:** only with **at least 2 followers**. The rule of thumb is "one app is a hit; the copies make the niche".
+- **Each cluster card shows:**
+    - the originator and its rank history as a sparkline;
+    - the followers;
+    - the total rank gained;
+    - the combined rating growth;
+    - the number of countries it ranks in.
+
+**5. Seen abroad, not here yet.**
+- **Who appears:** apps (and emerging words) ranked in the **Top 25** of a tracked chart in **another enabled country**, in a category also tracked in the selected country, that have **never ranked** in the selected country.
+- **Each row shows:** the app, where it ranks and since when, and the countries it ranks in.
+- **When only one country is enabled:** show an empty state that explains how to enable more (link to Settings → Countries) and mentions `collector/db/activate-us.sql`.
+
+### On every app row
+- A link to the app page.
+- A **Dismiss** button (hide from the Radar; reversible from "Show dismissed").
+- If Milestone 9 is built, the existing `FollowButton`. Don't build follow logic here.
+
+### States
+- **Loading:** skeletons.
+- **Empty, per section:** explain what would make the section fill up, e.g. "Not enough history yet: the Radar needs about 2 weeks of collection".
+- **Errors:** the existing `ErrorState`.
+
+## 3. Radar score and reasons (pure functions, unit tested)
+
+Each candidate app gets **reasons**, and a score that is simply the sum of their points. Points are constants in one place, so they are easy to tune later.
+
+| Reason (chip) | Condition | Points |
+|---|---|---|
+| `NEW_APP` | released ≤ 90 days ago | 2 |
+| `NEW_IN_CHARTS` | first seen by the tracker within the period | 2 |
+| `CLIMBING` | gained ≥ 10 places over the period (or bottom → top half) | 2 |
+| `STEADY` | rank improved in ≥ 60% of the steps in the period (≥ 4 readings) | 1 |
+| `RATINGS_GROWING` | rating count +≥ 30% over 7 days and +≥ 20 ratings | 2 |
+| `RATINGS_FAST` | rating growth in the top 10% of ranked apps in the scope | 1 |
+| `UNKNOWN_THEME` | name/summary matches no known theme | 2 |
+| `HAS_FOLLOWERS` | is the originator of a cluster with ≥ 2 followers | 3 |
+| `MULTI_COUNTRY` | ranks in ≥ 2 enabled countries | 1 |
+| `NEW_DEVELOPER` | developer's first app seen by the tracker | 1 |
+
+**Rules:**
+- Hide apps with score < 4 by default; a "Show all" link reveals them.
+- **Ignore readings flagged as gaps** (after outages), and only use VALID snapshots.
+- **Ratings growth** needs at least 2 daily rows. Without them, the reason simply doesn't apply (no error).
+
+## 4. Themes (known niches)
+
+"Unknown theme" needs a list of known themes.
+
+- **The list:** themes are a name plus keywords, managed in a **Themes** tab on the Radar page itself. **Do not add it to Settings.**
+- **Seed themes:**
+    - Tongits (`tongits`)
+    - Pusoy (`pusoy`, `pusoy dos`)
+    - Slots (`slot`, `slots`)
+    - Bingo (`bingo`)
+    - Poker (`poker`, `texas`, `holdem`)
+    - Mahjong (`mahjong`)
+    - Sabong (`sabong`)
+    - Ludo (`ludo`)
+    - Domino (`domino`, `dominoes`)
+    - Chess (`chess`)
+    - Solitaire (`solitaire`)
+    - Lucky 9 (`lucky 9`, `lucky nine`)
+    - Sakla (`sakla`)
+    - Color game (`color game`, `perya`)
+- **"Save as theme"** from an emerging word creates a theme with that word. The word then disappears from "Emerging words" when "Hide known themes" is on.
+- **Themes are switched off, never deleted.**
+
+### Words and stop words (pure helper, unit tested)
+- **Lowercase**, remove accents, split on anything that isn't a letter or digit. Use a Unicode-aware split, because names can be Filipino, English, Arabic or other scripts.
+- **Drop:** words of 2 characters or fewer, pure numbers and years.
+- **Stop words:** English and Filipino/Tagalog, plus generic app words: `game`, `games`, `online`, `offline`, `free`, `pro`, `plus`, `app`, `new`, `best`, `real`, `classic`, `card`, `casino`, `ng`, `sa`, `ang`, `mga`, `laro`…
+    - Keep the list in one file.
+    - Category names are stop words too: a word that is just the category isn't news.
+- **Plurals:** treat `slot`/`slots` as one word with simple `s` stemming. Nothing more clever.
+
+## 5. Technical design
+
+### Schema: `backend/db/radar.sql` (plain SQL run by the admin, like `management.sql`; there is no Flyway)
+Make it **safe to run again**: `CREATE TABLE IF NOT EXISTS`, seed with `ON CONFLICT (name) DO NOTHING`, grants repeated harmlessly.
+
+```
+radar_theme
+  id          bigint identity PK
+  name        text NOT NULL UNIQUE
+  keywords    text[] NOT NULL
+  active      boolean NOT NULL DEFAULT true
+  created_at, updated_at timestamptz
+
+radar_dismissal
+  app_id      bigint PK REFERENCES app(id)
+  active      boolean NOT NULL DEFAULT true   -- "undismiss" sets false
+  created_at, updated_at timestamptz
+```
+- **Seed** the themes from §4.
+- **Grants:** `app_backend` gets `SELECT, INSERT, UPDATE` on both tables and the sequence. **No `DELETE`.**
+- **Where it runs:** add `radar.sql` to the list of scripts in `DEPLOY.md` (section 8) and section 8 of this file, after `management.sql`.
+
+### Backend (package `com.apptracker.radar`, read-mostly)
+- **`RadarRepository`:** NamedParameterJdbcTemplate.
+    - Candidates: apps ranked in the scope's active charts within the period, with their first/last ranks, reading counts, `release_date`, `first_seen_at`, developer, latest name/summary, and rating counts at the start and end (`app_rating_daily`).
+    - Keep it to a few set-based queries, not one per app.
+- **Pure helpers, unit tested:**
+    - `Words` (tokenise, stop words, stemming);
+    - `RadarScorer` (reasons and score);
+    - `EmergingWords`;
+    - `Clusters` (originator, followers, Jaro-Winkler);
+    - `AbroadNotHere`.
+- **`RadarService`:**
+    - Computes the whole Radar for (country, scope, period) **at read time**, like M9's alerts.
+    - Caches the result for 10 minutes per parameter set (a simple in-memory map with timestamps is enough).
+    - The data changes at most hourly, and the volume is small: hundreds of apps.
+- **`RadarController`:**
+
+| Endpoint | Returns / does |
+|---|---|
+| `GET /api/radar?country=ph&genre=&window=14d&hideKnown=true&showDismissed=false&minScore=4` | `{newcomers[], risingFromBottom[], emergingWords[], clusters[], abroad[], dataSince, notes[]}`. Rows reuse the existing `AppCard`; each row has `reasons[]`, `score`, and the numbers shown in §2 |
+| `GET /api/radar/themes` · `POST` · `PUT /api/radar/themes/{id}` | Themes: list, create `{name, keywords}`, change `{name?, keywords?, active?}` |
+| `POST /api/radar/dismiss` `{appleAppId, active}` | Dismiss / undismiss |
+
+- **Validation:** 400 with field errors, as in `/api/manage`.
+- **Protection:** like Settings. Add `/api/radar/**` to the admin-key interceptor for **non-GET methods only**; `GET` stays open.
+- **`dataSince`:** the first VALID snapshot in the scope. The frontend uses it to say "not enough history yet" when it is less than 7 days ago.
+
+### Frontend
+- **API layer:** `api/radarApi.ts` + `api/radarTypes.ts`. Reads are merged into `trackerApi`; writes go through the existing `useMutation`/`manageSaga` mechanism, with `INVALIDATES` entries. Only `src/api/*` knows URLs.
+- **Domain:** `domain/radar.ts` holds the reason-chip definitions (label key, tone, order), the "not enough history" rule and the sorting. Unit-test it.
+- **Components:**
+    - `ReasonChips`;
+    - `RadarAppRow` (reuses `AppLabel`, `Sparkline`, `RankDelta`);
+    - `WordRow`;
+    - `ClusterCard`;
+    - `ThemeEditor`, for the Themes tab: list with switches, add a theme, edit keywords as chips.
+- **Page:** `pages/RadarPage.tsx`, a lazy route; it has two tabs, Radar and Themes.
+- **i18n:**
+    - Every text in `en.json` **and** `ar.json`, with full Arabic plurals: "N new apps", "N developers", "N followers", "N countries", ages in days.
+    - Words and app names keep `dir="auto"`.
+- **Fake API:** extend `mock/` with a plausible `/api/radar` response built from the existing fixtures, plus an in-memory fake of themes and dismissals, so `npm run dev:mock` shows every section filled. Include at least one cluster, one emerging word, and the "abroad" empty state.
+
+### Tests (owner's rule: light, unit tests and migration tests only)
+- **Backend:**
+    - `WordsTest`: tokenising, stop words, `s` stemming, non-Latin names.
+    - `RadarScorerTest`: each reason, thresholds, missing ratings, a 12-hour interval.
+    - `EmergingWordsTest`: ≥ 3 apps / ≥ 2 developers / baseline ≤ 1, and the known-theme filter.
+    - `ClustersTest`: originator order, followers from other developers only, the minimum of 2 followers.
+- **Migration test** for `radar.sql`:
+    - running it twice works;
+    - the seed themes are present;
+    - the backend role can insert and update but **not delete**.
+- **Frontend:** `domain/radar.test.ts`; the i18n key test must still pass.
+
+## 6. Build order (stop for review after each)
+
+1. **Backend + `radar.sql`:** helpers and tests first, then the repository, service and endpoints. Check the endpoint against the real database: numbers make sense, response time under 1 s.
+2. **Frontend:** the Radar tab (five sections), the Themes tab, the fake API, both languages.
+
+When done, update the READMEs (endpoint tables, screens), `DEPLOY.md` (the script list) and this file (sections 3, 5, 7, 8 and 10).
+
+## 7. Out of scope for v1
+
+Do not build these; they are noted here for later:
+- external signals (Google Trends, social, ad libraries);
+- Apple keyword search to measure supply;
+- review-text analysis;
+- radar alerts (they could plug into M9's alert rules later).
