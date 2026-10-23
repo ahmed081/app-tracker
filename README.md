@@ -45,12 +45,13 @@ curl http://localhost:8080/api/charts/ph/7006/top-free/ranking
 curl http://localhost:8080/api/charts/ph/7006/top-free/headlines
 ```
 
-**Existing database** (created before the Settings menu or the watchlist): run the backend's table scripts once as the admin. The last two are safe to run again:
+**Existing database** (created before the Settings menu, the watchlist or the Radar): run the backend's table scripts once as the admin. The last three are safe to run again:
 
 ```bash
 psql "$ADMIN_DATABASE_URL" -f backend/db/schema.sql       # only if the backend tables do not exist yet
 psql "$ADMIN_DATABASE_URL" -f backend/db/management.sql
 psql "$ADMIN_DATABASE_URL" -f backend/db/watchlist.sql
+psql "$ADMIN_DATABASE_URL" -f backend/db/radar.sql
 ```
 
 Configuration from SQL (countries, categories, chart types) and backups: see `collector/README.md`. API, rules and admin actions: see `backend/README.md`. The web app (development with a fake API, separate deployment, languages): see `frontend/README.md`.

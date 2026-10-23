@@ -1,0 +1,20 @@
+# Radar stop words: never news on their own. One or more per line, lowercase.
+# Words of 2 characters or fewer, numbers and years are dropped anyway.
+# Category names in the scope are added at run time.
+
+# English
+the and for with you your our are was were has have had not but all any can will from this that these those
+its into out off over under more most much many very just also than then them they their there here what when
+who why how get got let lets now one two three per via yet own same such only each every both few some other
+about after again before below above between during through until while where which would could should may might
+must shall being been does did doing done make made play playing played player players fun win wins winning
+time times day days way ways top big great good nice cool easy hard fast quick lot lots love like
+
+# Filipino / Tagalog
+ang ng mga sa na at ay si ni kay sila kami tayo kayo ito iyan iyon dito diyan doon para may mayroon wala hindi
+oo po opo lang din rin pa ba kung pag kapag dahil pero kaya mas pinaka nang naman talaga sobra tara laro laruin
+maglaro manlalaro panalo manalo libre bago
+
+# Generic app words
+game games gaming online offline free pro plus app apps new best real classic card cards casino casinos
+edition version mobile ios iphone ipad official original premium deluxe lite mini max ultimate world vip

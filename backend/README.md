@@ -22,6 +22,7 @@ psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -v backend_pas
 psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/schema.sql
 psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/management.sql
 psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/watchlist.sql
+psql "postgres://apptracker:ADMIN_PASS@localhost:5432/apptracker" -f db/radar.sql
 
 export JDBC_URL=jdbc:postgresql://localhost:5432/apptracker
 export DATABASE_USER=app_backend DATABASE_PASSWORD=BACKEND_PASS     # the app runs as app_backend

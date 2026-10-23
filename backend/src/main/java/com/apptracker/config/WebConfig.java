@@ -35,7 +35,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * /api/admin/** and /api/manage/** require the X-Admin-Key header when ADMIN_KEY
-     * is set. So do writes to the watchlist and alerts; their reads stay open.
+     * is set. So do writes to the watchlist, alerts and Radar; their reads stay open.
      * With no ADMIN_KEY everything is open (the owner's choice until the server is public).
      */
     @Override
@@ -43,7 +43,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(new AdminKeyInterceptor(props.adminKey(), false))
                 .addPathPatterns("/api/admin/**", "/api/manage/**");
         registry.addInterceptor(new AdminKeyInterceptor(props.adminKey(), true))
-                .addPathPatterns("/api/watch", "/api/watch/**", "/api/alerts", "/api/alerts/**");
+                .addPathPatterns("/api/watch", "/api/watch/**", "/api/alerts", "/api/alerts/**",
+                        "/api/radar", "/api/radar/**");
     }
 
     /**

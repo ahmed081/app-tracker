@@ -178,13 +178,19 @@ psql "$DB" -v ON_ERROR_STOP=1 -f collector/db/schema.sql -f collector/db/seed.sq
 # Optional least-privilege logins for the collector and the backend:
 psql "$DB" -v ON_ERROR_STOP=1 -v collector_password=pw-c -f collector/db/create-user.sql
 psql "$DB" -v ON_ERROR_STOP=1 -v backend_password=pw-b -f backend/db/create-backend-user.sql
-psql "$DB" -v ON_ERROR_STOP=1 -f backend/db/schema.sql -f backend/db/management.sql -f backend/db/watchlist.sql
+psql "$DB" -v ON_ERROR_STOP=1 -f backend/db/schema.sql -f backend/db/management.sql -f backend/db/watchlist.sql \n    -f backend/db/radar.sql
 ```
 
 **Existing database, before deploying the watchlist** (milestone 9): run `backend/db/watchlist.sql` once as the owner. It is safe to run again. Without it, the watchlist page and the Follow buttons fail; the rest of the site keeps working.
 
 ```bash
 psql "$DB" -v ON_ERROR_STOP=1 -f backend/db/watchlist.sql
+```
+
+**Existing database, before deploying the Radar** (milestone 10): run `backend/db/radar.sql` once as the owner, after `management.sql`. It is safe to run again: it creates the themes and dismissals tables, adds the seed themes it does not find, and grants `app_backend` its rights only when that role exists (a database with a single owner login needs none). Without it, the Radar page fails; the rest of the site keeps working.
+
+```bash
+psql "$DB" -v ON_ERROR_STOP=1 -f backend/db/radar.sql
 ```
 
 This creates the tables and the starting configuration (PH Board/Card/Casino). Then point `COLLECTOR_DATABASE_URL` and `BACKEND_*` in `.env` at it. Use letters, digits, `-` and `_` only in passwords.
