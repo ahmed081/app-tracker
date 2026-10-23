@@ -58,6 +58,22 @@ class RadarScorerTest {
     }
 
     @Test
+    void theLastRanksOfTheChartAreChurnNotClimbs() {
+        Instant last = T0.plus(Duration.ofHours(12));
+        // 99 → 89 in a 100-entry chart: 10 places, but still in the bottom quarter.
+        Move edge = Move.of(every12h(99, 89), T0, last, 100, TWELVE_HOURS, 3);
+        assertEquals(10, edge.placesGained());
+        assertFalse(edge.reachedBody());
+        assertFalse(RadarScorer.reasons(facts(null, false, edge, null, null), TODAY).contains(Reason.CLIMBING));
+        // 90 → 75 ends in the body (top 75%).
+        Move body = Move.of(every12h(90, 75), T0, last, 100, TWELVE_HOURS, 3);
+        assertTrue(body.reachedBody());
+        assertTrue(RadarScorer.reasons(facts(null, false, body, null, null), TODAY).contains(Reason.CLIMBING));
+        // Reached rank 70 once, then fell back: it was in the body.
+        assertTrue(Move.of(every12h(95, 70, 96), T0, T0.plus(Duration.ofHours(24)), 100, TWELVE_HOURS, 3).reachedBody());
+    }
+
+    @Test
     void movesKnowWhenTheAppIsMissingAtEitherEnd() {
         Instant last = T0.plus(Duration.ofHours(36));
         // Entered after the period's first reading: gains count from its first rank, never bottom to top.

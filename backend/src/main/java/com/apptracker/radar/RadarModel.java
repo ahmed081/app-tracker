@@ -67,7 +67,7 @@ public final class RadarModel {
             boolean dismissed) {
     }
 
-    /** @param since in that chart's Top 25 since */
+    /** @param since in that chart's Top 25 since; null = since tracking began (no earlier date is known) */
     public record AbroadRank(String chart, String country, int rank, Instant since) {
     }
 

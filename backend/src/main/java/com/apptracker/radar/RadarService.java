@@ -164,8 +164,26 @@ public class RadarService {
         Set<Long> dismissed = repo.dismissed();
         Instant trackerStart = repo.trackerStart().orElse(dataSince);
 
-        Predicate<Long> isNew = id -> newSince(first.get(id), chartById, periodStart);
-        Predicate<Long> followerEligible = id -> newSince(first.get(id), chartById, followersFrom);
+        // Each app's move in each chart of the scope, and its best chart now.
+        Map<Long, Map<Long, Move>> moves = new HashMap<>();
+        Map<Long, Long> bestChart = new HashMap<>();
+        readings.forEach((app, byChart) -> byChart.forEach((chartId, list) -> {
+            ScopeChart ch = chartById.get(chartId);
+            Move m = Move.of(list, ch.periodFirst(), ch.latest(), ch.depth(), ch.intervalMinutes(), gapFactor);
+            moves.computeIfAbsent(app, x -> new HashMap<>()).put(chartId, m);
+            if (m.currentRank() == null) return;
+            Long best = bestChart.get(app);
+            if (best == null || m.currentRank() < moves.get(app).get(best).currentRank()) bestChart.put(app, chartId);
+        }));
+
+        // Only apps that reached the body of a chart (its top 75%) count as new: the last
+        // ranks of Apple's 100-entry feeds churn with old apps dropping in and out.
+        Set<Long> reachedBody = new HashSet<>();
+        moves.forEach((app, byChart) -> {
+            if (byChart.values().stream().anyMatch(Move::reachedBody)) reachedBody.add(app);
+        });
+        Predicate<Long> isNew = id -> reachedBody.contains(id) && newSince(first.get(id), chartById, periodStart);
+        Predicate<Long> followerEligible = id -> reachedBody.contains(id) && newSince(first.get(id), chartById, followersFrom);
         Map<Long, String> text = new HashMap<>();
         Map<Long, Set<String>> appWords = new HashMap<>();
         for (long id : population) {
@@ -190,21 +208,9 @@ public class RadarService {
         Set<Long> originators = clusters.stream().map(Cluster::originatorId).collect(Collectors.toSet());
 
         // Where every app ranks now, in every enabled country.
-        List<ChartRank> latest = repo.latestRanks();
+        List<ChartRank> latest = repo.latestRanks(RadarScorer.WARM_UP);
         Map<Long, Set<String>> countriesOf = new HashMap<>();
         latest.forEach(r -> countriesOf.computeIfAbsent(r.appId(), x -> new TreeSet<>()).add(r.country()));
-
-        // Each app's move in each chart of the scope, and its best chart now.
-        Map<Long, Map<Long, Move>> moves = new HashMap<>();
-        Map<Long, Long> bestChart = new HashMap<>();
-        readings.forEach((app, byChart) -> byChart.forEach((chartId, list) -> {
-            ScopeChart ch = chartById.get(chartId);
-            Move m = Move.of(list, ch.periodFirst(), ch.latest(), ch.depth(), ch.intervalMinutes(), gapFactor);
-            moves.computeIfAbsent(app, x -> new HashMap<>()).put(chartId, m);
-            if (m.currentRank() == null) return;
-            Long best = bestChart.get(app);
-            if (best == null || m.currentRank() < moves.get(app).get(best).currentRank()) bestChart.put(app, chartId);
-        }));
 
         Map<Long, Ratings> ratings = repo.ratings(k.country(), population, today.minusDays(RATING_DAYS));
         Map<Long, Integer> gains = new HashMap<>();
@@ -227,7 +233,8 @@ public class RadarService {
                     r == null ? null : r.first(), r == null ? null : r.last(), fast.contains(app),
                     !known.matches(text.get(app)), originators.contains(app),
                     countriesOf.getOrDefault(app, Set.of()).size(),
-                    a.developerFirstSeen() != null && RadarScorer.isNew(a.developerFirstSeen(), trackerStart, periodStart));
+                    reachedBody.contains(app) && a.developerFirstSeen() != null
+                            && RadarScorer.isNew(a.developerFirstSeen(), trackerStart, periodStart));
             List<Reason> reasons = RadarScorer.reasons(f, today);
             return new Candidate(app, chartId, m, reasons, RadarScorer.score(reasons));
         };

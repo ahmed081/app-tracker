@@ -26,11 +26,15 @@ public final class AbroadNotHere {
     }
 
     static final int TOP = 25;
-    static final int WORD_MIN_APPS = 2;
+    static final int WORD_MIN_APPS = 3;           // as emerging words: 2 apps are a coincidence
     static final int WORD_MIN_DEVELOPERS = 2;
     static final int WORD_MAX_HERE = 1;
 
-    /** An app's rank in the latest reading of an active chart. @param since in the chart's Top 25 since */
+    /**
+     * An app's rank in the latest reading of an active chart.
+     *
+     * @param since in the chart's Top 25 since; null = since tracking began
+     */
     public record ChartRank(long appId, String country, String chartKey, int genreId, int rank, Instant since) {
     }
 
@@ -67,7 +71,7 @@ public final class AbroadNotHere {
     }
 
     /**
-     * Words seen abroad, not here yet: used by 2 or more of the abroad apps, from 2
+     * Words seen abroad, not here yet: used by 3 or more of the abroad apps, from 2
      * developers or more, and by 1 app here at most.
      *
      * @param abroadApps the words of the apps returned by {@link #find}

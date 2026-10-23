@@ -38,12 +38,13 @@ class AbroadNotHereTest {
 
     @Test
     void wordsSeenAbroadNotHere() {
-        List<AppWords> abroad = List.of(new AppWords(1, 10L, T, false, Set.of("sakura", "spin")),
-                new AppWords(2, 11L, T, false, Set.of("sakura", "spin")));
+        List<AppWords> abroad = List.of(new AppWords(1, 10L, T, false, Set.of("sakura", "spin", "pair")),
+                new AppWords(2, 11L, T, false, Set.of("sakura", "spin", "pair")),
+                new AppWords(5, 11L, T, false, Set.of("sakura")));
         List<AppWords> here = List.of(new AppWords(3, 12L, T, false, Set.of("spin")),
                 new AppWords(4, 13L, T, false, Set.of("spin")));
         assertEquals(List.of("sakura"), AbroadNotHere.words(abroad, here, w -> false).stream()
                 .map(EmergingWords.Word::word).toList());
-        assertTrue(AbroadNotHere.words(abroad, here, "sakura"::equals).isEmpty());
+        assertTrue(AbroadNotHere.words(abroad, here, "sakura"::equals).isEmpty());   // "pair": 2 apps only
     }
 }

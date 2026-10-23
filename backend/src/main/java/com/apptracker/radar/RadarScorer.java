@@ -31,6 +31,11 @@ public final class RadarScorer {
     static final int MULTI_COUNTRY_MIN = 2;
     /** Apps seen within this time of a chart's first reading were already there: not new. */
     public static final Duration WARM_UP = Duration.ofHours(48);
+    /**
+     * The body of a chart: its top 75%. Below it, Apple's 100-entry feeds churn: old apps
+     * that hover around the last ranks drop in and out, which is neither "new" nor a climb.
+     */
+    static final int BODY_PERCENT = 75;
 
     /** One VALID reading of a chart in which the app is ranked. */
     public record Reading(Instant at, int rank) {
@@ -70,8 +75,11 @@ public final class RadarScorer {
      * @param currentRank  rank in the chart's latest reading (null = not ranked now)
      * @param placesGained first rank of the period minus the current rank; null when not ranked now
      * @param bottomToTop  in the bottom half at the start of the period, in the top half now
+     * @param bestRank     best rank in the period; null when not ranked in it
+     * @param depth        entries the chart really has
      */
-    public record Move(Integer startRank, Integer currentRank, Integer placesGained, boolean bottomToTop, Steps steps) {
+    public record Move(Integer startRank, Integer currentRank, Integer placesGained, boolean bottomToTop, Steps steps,
+                       Integer bestRank, int depth) {
 
         /**
          * @param readings  the app's readings in the period, oldest first
@@ -81,7 +89,7 @@ public final class RadarScorer {
          */
         public static Move of(List<Reading> readings, Instant periodStartReading, Instant latestReading, int depth,
                               int intervalMinutes, int gapFactor) {
-            if (readings.isEmpty()) return new Move(null, null, null, false, Steps.NONE);
+            if (readings.isEmpty()) return new Move(null, null, null, false, Steps.NONE, null, depth);
             Reading first = readings.get(0);
             Reading last = readings.get(readings.size() - 1);
             Integer start = first.at().equals(periodStartReading) ? first.rank() : null;
@@ -89,8 +97,23 @@ public final class RadarScorer {
             Integer gained = current == null ? null : first.rank() - current;
             int half = depth / 2;
             boolean bottomToTop = start != null && current != null && start > half && current <= half;
-            return new Move(start, current, gained, bottomToTop, Steps.of(readings, intervalMinutes, gapFactor));
+            int best = readings.stream().mapToInt(Reading::rank).min().orElseThrow();
+            return new Move(start, current, gained, bottomToTop, Steps.of(readings, intervalMinutes, gapFactor), best, depth);
         }
+
+        /** Reached the body of the chart (its top 75%) at least once in the period. */
+        public boolean reachedBody() {
+            return bestRank != null && inBody(bestRank, depth);
+        }
+
+        /** In the body of the chart now. */
+        public boolean inBodyNow() {
+            return currentRank != null && inBody(currentRank, depth);
+        }
+    }
+
+    static boolean inBody(int rank, int depth) {
+        return rank * 100L <= (long) depth * BODY_PERCENT;
     }
 
     /**
@@ -119,7 +142,9 @@ public final class RadarScorer {
         if (f.releaseDate() != null && !f.releaseDate().isBefore(today.minusDays(NEW_APP_DAYS))) r.add(Reason.NEW_APP);
         if (f.newInCharts()) r.add(Reason.NEW_IN_CHARTS);
         Move m = f.move();
-        if (m != null && ((m.placesGained() != null && m.placesGained() >= CLIMBING_PLACES) || m.bottomToTop())) {
+        // A climb at the very bottom of the chart (99 → 89) is churn, not a climb: it must end in the body.
+        if (m != null && ((m.placesGained() != null && m.placesGained() >= CLIMBING_PLACES && m.inBodyNow())
+                || m.bottomToTop())) {
             r.add(Reason.CLIMBING);
         }
         if (m != null && m.steps().steady()) r.add(Reason.STEADY);

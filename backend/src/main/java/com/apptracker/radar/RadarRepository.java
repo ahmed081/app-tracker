@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -135,8 +136,12 @@ public class RadarRepository {
         return out;
     }
 
-    /** Ranks in the latest VALID reading of every active chart of every enabled country. */
-    public List<ChartRank> latestRanks() {
+    /**
+     * Ranks in the latest VALID reading of every active chart of every enabled country.
+     * "since" is null when it falls within the warm-up after the chart's first reading:
+     * it would only say when tracking started.
+     */
+    public List<ChartRank> latestRanks(Duration warmUp) {
         return jdbc.query("""
                 WITH latest AS (
                     SELECT DISTINCT ON (s.chart_id) s.id, s.chart_id
@@ -144,14 +149,20 @@ public class RadarRepository {
                     JOIN chart c ON c.id = s.chart_id AND c.active
                     JOIN country co ON co.code = c.country_code AND co.enabled
                     WHERE s.status = 'VALID'
-                    ORDER BY s.chart_id, s.slot_start DESC)
+                    ORDER BY s.chart_id, s.slot_start DESC),
+                started AS (
+                    SELECT chart_id, min(slot_start) AS first_valid FROM snapshot
+                    WHERE status = 'VALID' AND chart_id IN (SELECT chart_id FROM latest)
+                    GROUP BY chart_id)
                 SELECT r.app_id, vc.country_code, vc.chart_key, vc.genre_id, r.rank,
-                       COALESCE(st.in_chart_since, st.first_observed_at) AS since
+                       CASE WHEN COALESCE(st.in_chart_since, st.first_observed_at) > sd.first_valid + make_interval(mins => :warmUp)
+                            THEN COALESCE(st.in_chart_since, st.first_observed_at) END AS since
                 FROM latest l
+                JOIN started sd ON sd.chart_id = l.chart_id
                 JOIN ranking r ON r.snapshot_id = l.id
                 JOIN v_chart vc ON vc.id = l.chart_id
                 LEFT JOIN app_chart_state st ON st.chart_id = l.chart_id AND st.app_id = r.app_id
-                """, Map.of(), (rs, i) -> new ChartRank(rs.getLong("app_id"), rs.getString("country_code"),
+                """, Map.of("warmUp", (int) warmUp.toMinutes()), (rs, i) -> new ChartRank(rs.getLong("app_id"), rs.getString("country_code"),
                 rs.getString("chart_key"), rs.getInt("genre_id"), rs.getInt("rank"), instant(rs, "since")));
     }
 
