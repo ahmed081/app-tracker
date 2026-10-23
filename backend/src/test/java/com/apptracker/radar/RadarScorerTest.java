@@ -139,4 +139,15 @@ class RadarScorerTest {
         assertFalse(RadarScorer.isNew(Instant.parse("2026-09-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"), periodStart));
         assertFalse(RadarScorer.isNew(null, dataStart, periodStart));
     }
+
+    @Test
+    void thePeriodIsANumberOfDays() {
+        assertEquals("4d", RadarService.window(null));
+        assertEquals("14d", RadarService.window(" 14D "));
+        assertEquals("90d", RadarService.window("90d"));
+        assertNull(RadarService.window("91d"));
+        assertNull(RadarService.window("0d"));
+        assertNull(RadarService.window("2w"));
+        assertNull(RadarService.window("abc"));
+    }
 }

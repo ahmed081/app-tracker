@@ -14,7 +14,7 @@ The dashboard and app pages of the App Store ranking tracker. It reads only from
 | `/apps/{appleAppId}?chart=…&range=7d` | App details: identity and context, current rank, ranking history graph, key changes, time at the top, ratings, versions, about |
 | `/search?q=…` | Apps by name, developer, Apple ID or bundle ID |
 | `/watchlist` | My watchlist (shared by everyone): followed apps, a line per chart (rank, change over the period, 7-day trend, last key move, alert rule), and followed charts (current #1, latest big moment); chart filter and period |
-| `/radar` | Radar: newcomers, rising from the bottom, emerging words (save as theme), possible new niches, seen abroad; each app with its reason chips, Follow and Dismiss. Country, categories, period (7D / 14D / 30D), hide known themes, show dismissed. A Themes tab manages the known themes |
+| `/radar` | Radar: newcomers, rising from the bottom, emerging words (save as theme), possible new niches, seen abroad; each app with its reason chips, Follow and Dismiss. Country, categories, period (4D / 14D / last month, or a custom number of days from 1 to 90), hide known themes, show dismissed. A Themes tab manages the known themes |
 | `/settings/tracking` · `countries` · `rules` · `status` | Settings: what is tracked and how often, countries, categories, event rules, and collection health (asks for the admin key when the server requires one) |
 
 The chart, the period (1H / 24H / 7D / 30D), the noise filter, the language and the theme are remembered in the browser.

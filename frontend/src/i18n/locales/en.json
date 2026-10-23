@@ -481,10 +481,13 @@
     "scope": "Categories",
     "allCategories": "All tracked categories",
     "window": {
-      "7d": "7D",
+      "4d": "4D",
       "14d": "14D",
-      "30d": "30D"
+      "30d": "Last month",
+      "custom": "Custom"
     },
+    "customDays": "Number of days",
+    "customDaysHint": "From 1 to {{max}} days, then Enter",
     "hideKnown": "Hide known themes",
     "showDismissed": "Show dismissed",
     "asOf": "Updated {{when}}",

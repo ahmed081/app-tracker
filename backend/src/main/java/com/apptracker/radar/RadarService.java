@@ -65,7 +65,9 @@ import java.util.stream.Collectors;
 @Service
 public class RadarService {
 
-    public static final List<String> WINDOWS = List.of("7d", "14d", "30d");
+    /** The period is a number of days: "4d" (the default), "14d", "30d" or any other from 1 to 90. */
+    public static final String DEFAULT_WINDOW = "4d";
+    static final int MAX_DAYS = 90;
     static final Duration CACHE_FOR = Duration.ofMinutes(10);
     static final int SHORT_HISTORY_DAYS = 7;
     static final int RATING_DAYS = 7;
@@ -105,8 +107,8 @@ public class RadarService {
         Map<String, String> errors = new LinkedHashMap<>();
         String c = country == null ? "" : country.trim().toLowerCase(Locale.ROOT);
         if (!c.matches("[a-z]{2}")) errors.put("country", "Must be a 2-letter country code");
-        String w = window == null ? "14d" : window.trim().toLowerCase(Locale.ROOT);
-        if (!WINDOWS.contains(w)) errors.put("window", "Must be one of " + WINDOWS);
+        String w = window(window);
+        if (w == null) errors.put("window", "Must be a number of days from 1 to " + MAX_DAYS + ", e.g. 4d, 14d or 30d");
         if (genreId != null && genreId <= 0) errors.put("genre", "Must be a genre id");
         if (minScore < 0 || minScore > MAX_SCORE) errors.put("minScore", "Must be between 0 and " + MAX_SCORE);
         if (!errors.isEmpty()) throw new ValidationException(errors);
@@ -123,7 +125,7 @@ public class RadarService {
 
     private RadarResponse compute(Key k, Instant now) {
         LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
-        Instant periodStart = now.minus(Duration.ofMinutes(TimeWindow.parse(k.window(), "14d").minutes()));
+        Instant periodStart = now.minus(Duration.ofMinutes(TimeWindow.parse(k.window(), DEFAULT_WINDOW).minutes()));
         Instant baselineStart = periodStart.minus(Duration.ofDays(EmergingWords.BASELINE_DAYS));
         Instant followersFrom = periodStart.minus(Duration.ofDays(Clusters.FOLLOWER_EXTRA_DAYS));
         List<String> notes = new ArrayList<>();
@@ -324,7 +326,7 @@ public class RadarService {
         Map<Long, Map<Long, List<Point>>> trends = new HashMap<>();
         trendApps.forEach((chartId, ids) -> {
             ScopeChart ch = chartById.get(chartId);
-            int step = TimeWindow.parse(k.window(), "14d").stepMinutes(null, ch.intervalMinutes());
+            int step = TimeWindow.parse(k.window(), DEFAULT_WINDOW).stepMinutes(null, ch.intervalMinutes());
             trends.put(chartId, query.series(chartId, ids, periodStart, now, step));
         });
 
@@ -379,6 +381,15 @@ public class RadarService {
                 abroadOut,
                 abroadWords.stream().map(toWord).toList(),
                 notes);
+    }
+
+    /** "14d", "14D", " 14d " → "14d"; null when not a number of days from 1 to 90 (missing = the default). */
+    static String window(String raw) {
+        if (raw == null || raw.isBlank()) return DEFAULT_WINDOW;
+        String w = raw.trim().toLowerCase(Locale.ROOT);
+        if (!w.matches("[1-9][0-9]{0,2}d")) return null;
+        int days = Integer.parseInt(w.substring(0, w.length() - 1));
+        return days <= MAX_DAYS ? days + "d" : null;
     }
 
     /** New since `from`: first seen then or later, and after its chart's warm-up. */

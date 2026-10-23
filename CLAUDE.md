@@ -305,6 +305,7 @@ The earlier work was done in a sandbox that could not reach Apple or Maven Centr
     - The M9 section mentions "Migration `V4__watchlist.sql` (Flyway)". There is no Flyway (section 3): write that schema as `backend/db/watchlist.sql`, applied by hand like `management.sql`.
 9. **Milestone 10: Radar (spotting new niches).** Built (backend and frontend). The spec is the section **"Milestone 10"** at the end of this file.
     - `radar.sql` is applied on the server (2026-10-23) and the Radar runs there (about 0.5 s uncached, cached 10 minutes). Checked against real data: bottom-of-chart churn no longer counts as new, words seen abroad need 3 apps, and "in the Top 25 since" is null when it only means "since tracking began".
+    - The period is a parameter (owner's request, 2026-10-23): any number of days from 1 to 90, default 4 days; the page offers 4D, 14D, last month and a custom number of days.
     - Not done yet: `RadarMigrationTest` was not re-run on the final script; rule tuning once there are 2+ weeks of data.
     - The frontend was viewed against the fake API (`mock/mock-radar-api.ts`) in English and Arabic.
 

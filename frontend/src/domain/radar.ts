@@ -3,9 +3,21 @@
 import type { Chart } from '@/api/types';
 import type { RadarApp, RadarReason } from '@/api/radarTypes';
 
-export const RADAR_WINDOWS = ['7d', '14d', '30d'] as const;
-export type RadarWindow = (typeof RADAR_WINDOWS)[number];
-export const DEFAULT_RADAR_WINDOW: RadarWindow = '14d';
+/** The period is a number of days (backend: 1 to 90). Presets: 4 days, 14 days, last month. */
+export const RADAR_PRESET_DAYS = [4, 14, 30] as const;
+export const DEFAULT_RADAR_DAYS = 4;
+export const MAX_RADAR_DAYS = 90;
+
+/** The API's window parameter: 14 → "14d". */
+export const radarWindow = (days: number) => `${days}d`;
+
+/** A typed number of days, or null when it isn't a whole number from 1 to 90. */
+export function parseRadarDays(input: string): number | null {
+  const s = input.trim();
+  if (!/^\d{1,3}$/.test(s)) return null;
+  const days = Number(s);
+  return days >= 1 && days <= MAX_RADAR_DAYS ? days : null;
+}
 /** Apps scoring less are hidden until "Show all". */
 export const DEFAULT_MIN_SCORE = 4;
 /** Below this much history the page says "not enough history yet". */

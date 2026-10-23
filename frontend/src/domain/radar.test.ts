@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Chart } from '@/api/types';
 import type { RadarApp } from '@/api/radarTypes';
 import {
-  historyDays, normalizeKeywords, notEnoughHistory, radarCountries, radarGenres, REASONS, sortRadarApps, sortReasons,
+  historyDays, normalizeKeywords, parseRadarDays, radarWindow, notEnoughHistory, radarCountries, radarGenres, REASONS, sortRadarApps, sortReasons,
   themeFromWord, validateTheme,
 } from './radar';
 
@@ -29,6 +29,18 @@ describe('reason chips', () => {
 
   it('carry the backend points', () => {
     expect(Object.values(REASONS).reduce((s, r) => s + r.points, 0)).toBe(17);
+  });
+});
+
+describe('period', () => {
+  it('is a whole number of days from 1 to 90', () => {
+    expect(parseRadarDays(' 21 ')).toBe(21);
+    expect(parseRadarDays('90')).toBe(90);
+    expect(parseRadarDays('91')).toBeNull();
+    expect(parseRadarDays('0')).toBeNull();
+    expect(parseRadarDays('2.5')).toBeNull();
+    expect(parseRadarDays('')).toBeNull();
+    expect(radarWindow(4)).toBe('4d');
   });
 });
 

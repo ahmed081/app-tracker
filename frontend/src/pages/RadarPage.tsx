@@ -6,8 +6,8 @@ import type { Chart } from '@/api/types';
 import type { RadarAbroad, RadarParams, RadarResponse } from '@/api/radarTypes';
 import { parseChartKey } from '@/domain/charts';
 import {
-  DEFAULT_MIN_SCORE, DEFAULT_RADAR_WINDOW, GOOD_HISTORY_DAYS, historyDays, notEnoughHistory, RADAR_WINDOWS, radarCountries,
-  radarGenres, sortRadarApps, type RadarWindow,
+  DEFAULT_MIN_SCORE, DEFAULT_RADAR_DAYS, GOOD_HISTORY_DAYS, historyDays, notEnoughHistory, radarCountries, radarGenres,
+  radarWindow, sortRadarApps,
 } from '@/domain/radar';
 import { useResource } from '@/features/remote/useResource';
 import { flag, useFormat } from '@/i18n/format';
@@ -15,12 +15,12 @@ import { AppLabel } from '@/components/app/AppLabel';
 import { FollowButton } from '@/components/app/FollowButton';
 import { ClusterCard } from '@/components/radar/ClusterCard';
 import { DismissButton } from '@/components/radar/DismissButton';
+import { PeriodPicker } from '@/components/radar/PeriodPicker';
 import { RadarAppRow } from '@/components/radar/RadarAppRow';
 import { ThemeEditor } from '@/components/radar/ThemeEditor';
 import { WordRow } from '@/components/radar/WordRow';
 import { Notice } from '@/components/ui/Notice';
 import { Panel } from '@/components/ui/Panel';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Select } from '@/components/ui/Select';
 import { EmptyState, ErrorState, Skeleton, SkeletonRows } from '@/components/ui/States';
 import { Switch } from '@/components/ui/Switch';
@@ -81,7 +81,7 @@ function RadarTab() {
   const genres = radarGenres(charts.data ?? [], country);
   const [genreChoice, setGenre] = useState('all');
   const genre = genres.some((g) => String(g.id) === genreChoice) ? genreChoice : 'all';
-  const [period, setPeriod] = useState<RadarWindow>(DEFAULT_RADAR_WINDOW);
+  const [days, setDays] = useState(DEFAULT_RADAR_DAYS);
   const [hideKnown, setHideKnown] = useState(true);
   const [showDismissed, setShowDismissed] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -89,9 +89,9 @@ function RadarTab() {
   const chartLabel = useChartLabel(charts.data ?? [], country);
 
   const params = useMemo<RadarParams>(() => ({
-    country, ...(genre === 'all' ? {} : { genre: Number(genre) }), window: period, hideKnown, showDismissed,
+    country, ...(genre === 'all' ? {} : { genre: Number(genre) }), window: radarWindow(days), hideKnown, showDismissed,
     minScore: showAll ? 0 : DEFAULT_MIN_SCORE,
-  }), [country, genre, period, hideKnown, showDismissed, showAll]);
+  }), [country, genre, days, hideKnown, showDismissed, showAll]);
   const radar = useResource('radar', params);
   const data = radar.data;
 
@@ -106,11 +106,7 @@ function RadarTab() {
         <Select label={t('radar.scope')} showLabel value={genre} onChange={setGenre} className="w-52"
           options={[{ value: 'all', label: t('radar.allCategories') },
             ...genres.map((g) => ({ value: String(g.id), label: f.genre(g.id, g.name) }))]} />
-        <div className="flex flex-col gap-1">
-          <span aria-hidden className="text-[12px] text-ink-3">{t('window.label')}</span>
-          <SegmentedControl label={t('window.label')} value={period} onChange={setPeriod}
-            options={RADAR_WINDOWS.map((w) => ({ value: w, label: t(`radar.window.${w}`) }))} />
-        </div>
+        <PeriodPicker days={days} onChange={setDays} />
         <label className="flex items-center gap-2 pb-1.5 text-[13px] text-ink-2">
           <Switch checked={hideKnown} onChange={setHideKnown} label={t('radar.hideKnown')} />
           <span aria-hidden>{t('radar.hideKnown')}</span>

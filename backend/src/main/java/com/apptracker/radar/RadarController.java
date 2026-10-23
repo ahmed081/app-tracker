@@ -34,12 +34,13 @@ public class RadarController {
     /**
      * Newcomers, rising from the bottom, emerging words, possible niches, and what ranks
      * abroad but not here, for one country and all its tracked categories (or one).
+     * window: a number of days from 1 to 90 (4d by default, e.g. 14d, 30d).
      * minScore=0 shows every app ("Show all").
      */
     @GetMapping
     public RadarResponse radar(@RequestParam(defaultValue = "ph") String country,
                                @RequestParam(required = false) Integer genre,
-                               @RequestParam(defaultValue = "14d") String window,
+                               @RequestParam(defaultValue = RadarService.DEFAULT_WINDOW) String window,
                                @RequestParam(defaultValue = "true") boolean hideKnown,
                                @RequestParam(defaultValue = "false") boolean showDismissed,
                                @RequestParam(defaultValue = "4") int minScore) {

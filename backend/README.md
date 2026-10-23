@@ -85,7 +85,7 @@ Computed at read time from the existing history (VALID readings only) and cached
 
 | Endpoint | Returns / does |
 |---|---|
-| `GET /api/radar?country=ph&genre=&window=14d&hideKnown=true&showDismissed=false&minScore=4` | `{newcomers, risingFromBottom, emergingWords, clusters, abroad, abroadWords, dataSince, hiddenByScore, notes}`; app rows carry `reasons[]`, `score` and a trend. `window` is 7d, 14d or 30d; `minScore=0` shows every app |
+| `GET /api/radar?country=ph&genre=&window=4d&hideKnown=true&showDismissed=false&minScore=4` | `{newcomers, risingFromBottom, emergingWords, clusters, abroad, abroadWords, dataSince, hiddenByScore, notes}`; app rows carry `reasons[]`, `score` and a trend. `window` is a number of days from 1 to 90 (default `4d`; the page offers 4d, 14d, last month and custom); `minScore=0` shows every app |
 | `GET /api/radar/themes` | Every theme, switched-off ones included |
 | `POST /api/radar/themes` | Create `{name, keywords}`; 400 with field errors, 409 on a duplicate name |
 | `PUT /api/radar/themes/{id}` | Change `{name?, keywords?, active?}` |

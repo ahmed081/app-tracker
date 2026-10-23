@@ -10,7 +10,6 @@ const POINTS: Record<string, number> = {
   NEW_APP: 2, NEW_IN_CHARTS: 2, CLIMBING: 2, STEADY: 1, RATINGS_GROWING: 2, RATINGS_FAST: 1,
   UNKNOWN_THEME: 2, HAS_FOLLOWERS: 3, MULTI_COUNTRY: 1, NEW_DEVELOPER: 1,
 };
-const WINDOWS: Record<string, number> = { '7d': 7, '14d': 14, '30d': 30 };
 const CASINO = 'ph/7006/top-free';
 const DAY = 86_400_000;
 
@@ -144,12 +143,13 @@ function themeWords(): Set<string> {
 
 function radar(qs: URLSearchParams, index: Json[], load: Load): { status: number; body: unknown } {
   const country = (qs.get('country') ?? 'ph').toLowerCase();
-  const window = qs.get('window') ?? '14d';
+  const window = (qs.get('window') ?? '4d').trim().toLowerCase();
+  const days = /^\d{1,3}d$/.test(window) ? Number(window.slice(0, -1)) : 0;
   const genre = qs.get('genre') ? Number(qs.get('genre')) : null;
   const hideKnown = qs.get('hideKnown') !== 'false';
   const showDismissed = qs.get('showDismissed') === 'true';
   const minScore = Number(qs.get('minScore') ?? 4);
-  if (!(window in WINDOWS)) return invalid({ window: 'Must be one of [7d, 14d, 30d]' });
+  if (days < 1 || days > 90) return invalid({ window: 'Must be a number of days from 1 to 90, e.g. 4d, 14d or 30d' });
 
   const charts = ((load('charts.json') ?? []) as unknown as Json[]).filter((c) => c.country === country && c.active !== false
     && (genre === null || c.genreId === genre));
@@ -161,7 +161,7 @@ function radar(qs: URLSearchParams, index: Json[], load: Load): { status: number
   const rows = ((load(`chart/${CASINO}/ranking.30d.json`)?.rows ?? []) as Json[]);
   const allPoints = rows.flatMap((r) => r.trend as Json[]);
   const latest = Math.max(...allPoints.map((pt) => Date.parse(pt.t)));
-  const from = latest - WINDOWS[window]! * DAY;
+  const from = latest - days * DAY;
   const dataSince = new Date(Math.min(...allPoints.map((pt) => Date.parse(pt.t)))).toISOString();
   const card = (id: string) => index.find((r) => r.app.appleAppId === id)?.app ?? null;
   const rankOf = (id: string) => rows.find((r) => r.app.appleAppId === id)?.rank
