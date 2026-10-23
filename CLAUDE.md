@@ -303,11 +303,10 @@ The earlier work was done in a sandbox that could not reach Apple or Maven Centr
     - In scope: a shared watchlist, alert rules, and alerts shown in the app.
     - Out of scope: accounts, email, Telegram.
     - The M9 section mentions "Migration `V4__watchlist.sql` (Flyway)". There is no Flyway (section 3): write that schema as `backend/db/watchlist.sql`, applied by hand like `management.sql`.
-9. **Milestone 10: Radar (spotting new niches).** Built (backend and frontend). The spec is the section **"Milestone 10"** at the end of this file.
-    - `radar.sql` is applied on the server (2026-10-23) and the Radar runs there (about 0.5 s uncached, cached 10 minutes). Checked against real data: bottom-of-chart churn no longer counts as new, words seen abroad need 3 apps, and "in the Top 25 since" is null when it only means "since tracking began".
-    - The period is a parameter (owner's request, 2026-10-23): any number of days from 1 to 90, default 4 days; the page offers 4D, 14D, last month and a custom number of days.
-    - Not done yet: `RadarMigrationTest` was not re-run on the final script; rule tuning once there are 2+ weeks of data.
-    - The frontend was viewed against the fake API (`mock/mock-radar-api.ts`) in English and Arabic.
+9. **Milestone 10: Radar (spotting new niches).** The spec is the section **"Milestone 10"** at the end of this file.
+    - **v1 is built and deployed** (2026-10-23): fixed rules, five sections, Themes tab, period of 1 to 90 days (default 4). Checked against real data: bottom-of-chart churn no longer counts as new, words seen abroad need 3 apps, "in the Top 25 since" is null when it only means "since tracking began". Clusters and emerging words are still empty: collection started 2026-10-19, and only apps first appearing after the 48-hour warm-up count as new.
+    - **v2 redesign requested** (2026-10-23): features / signals / views layers, rules in `setting.radar_rules` with presets, evidence on every reason, keyed cache, stored features and words tables, feedback with reasons, score history, signal report, saved views. Spec §2–§12. Status: spec written, awaiting the owner's approval; build steps 2–4 not started.
+    - Not done yet: `RadarMigrationTest` was not re-run on the final v1 script; rule tuning once there are 2+ weeks of data.
 
 ## 11. Working agreements with the owner
 
@@ -508,9 +507,9 @@ Update the READMEs (endpoint tables, screens) and `CLAUDE.md` (sections 5, 7 and
 
 # Milestone 10: Radar (spotting new niches)
 
-The owner requested this on 2026-10-23.
+The owner requested this on 2026-10-23. A first version (v1: fixed rules, one service class, 10-minute cache) was built and deployed the same day. The owner then asked for the **redesign below (v2): dynamic, efficient and maintainable**. This section is the v2 spec; where v1 code still fits, it is kept (see §9).
 
-**Keep everything else as it is.** Do not change existing screens, rules, the collector or Milestone 9's scope. The Radar is an **addition**: one new page, one SQL file, and one new read-only backend package.
+**Keep everything else as it is.** Do not change existing screens, rules, the collector or Milestone 9's scope. The Radar is an **addition**: one page, one SQL file, one backend package (`com.apptracker.radar`).
 
 ## 1. Goal
 
@@ -519,226 +518,236 @@ A new niche has no name, no group of similar apps, often no category of its own,
 | Data | Where it is |
 |---|---|
 | Ranks | `ranking`, `snapshot` |
-| When the tracker first saw an app | `app.first_seen_at` |
+| First appearance in a scope's charts | `ranking` (not `app.first_seen_at`) |
 | Release date | `app.release_date` |
 | Names and descriptions | `app_listing_version` (name, summary), `app_metadata_version` (description) |
 | Developers | `developer` |
 | Daily rating counts | `app_rating_daily` |
 | Several countries and categories | `chart` |
 
-It shows **why** each item is flagged (reason chips), not just a score.
+It shows **why** each item is flagged (reasons with their numbers), not just a score.
 
-No new external data source: no Google Trends, no social media, no Apple search API in v1.
+No new external data source: no Google Trends, no social media, no Apple search API.
 
-**Collection interval:** the default is 12 hours (section 1), so the Radar must reason in **time** (days), not in a fixed number of readings. Where a rule needs readings, it counts the VALID readings actually present in the period, whatever the interval.
+**Collection interval:** the default is 12 hours (section 1), so the Radar reasons in **time** (days), not in a fixed number of readings. Where a rule needs readings, it counts the VALID readings actually present in the period, whatever the interval. Only VALID snapshots are used; readings after a gap are ignored for steps.
 
-## 2. The Radar page (`/radar`, new menu item "Radar")
+## 2. Owner decisions (keep them)
 
-### Top bar (reuse existing components)
-- **Country:** default `ph`.
-- **Scope:** all tracked categories in that country (default), or one category.
-- **Period:** 7D / 14D (default) / 30D.
-- **Toggle:** "Hide known themes" (on by default).
+- **"New in charts" is decided per scope**, from the app's first appearance in `ranking`. An app is new only if it first appeared **more than 48 hours after that chart's first VALID reading** (the warm-up). The response says when there is not enough history yet (`notes[]`).
+- **Bottom churn:** the 100-entry feeds churn old apps at the last ranks. "New", "new developer", "follower" and "climbing" need the app to have reached the chart's **top 75%** (`bodyPercent`).
+- **Words seen abroad** go in `abroadWords[]`, next to `abroad[]`; a word needs 3 apps.
+- **"In the Top 25 since"** is null when it would only mean "since tracking began".
+- **Period:** any number of days from 1 to 90, default 4 days; the page offers 4D, 14D, last month and a custom number.
+- **Real database:** before running SQL on it, take a backup, follow `management.sql`'s grant pattern (grant to `app_backend` only if the role exists; the real database has a single owner login), and check the grants afterwards. Switch off any test rows written.
+- **Checking against the real database:** run the normal backend locally with `EVENTS_ENABLED=false`, `METADATA_ENABLED=false` and `RADAR_INDEX_ENABLED=false` on another port, GET only. No custom launcher, no local collector.
 
-### Five sections, each a `Panel`
+## 3. Design: three layers
 
-**1. Newcomers.** Apps that are new **and** gaining.
-- **Who appears:**
-    - first seen by the tracker within the period, **or** released by Apple within the last 90 days;
-    - currently ranked in at least one active chart of the scope.
-- **Each row shows:**
-    - app (icon, name, developer), best current rank and chart;
-    - rank change over the period;
-    - rating-count growth over 7 days (absolute and %);
-    - age in days;
-    - reason chips.
-- **Sorting:** by radar score (see §3).
+### Measurements (features)
+Per **app × country × scope** (scope = one category, or all tracked categories of the country), computed once per request or stored per day:
+- age (days since release), first appearance in the scope (and whether it is after the warm-up), whether it reached the top `bodyPercent`;
+- rank at period start and end, best rank, chart of the best current rank;
+- share of steps up and the number of VALID readings in the period;
+- rating count at start and end of the ratings window, and the growth (absolute and %);
+- number of enabled countries the app ranks in;
+- whether it is the developer's first app (per scope, same warm-up);
+- the normalised words of name + first sentence of the summary.
 
-**2. Rising from the bottom.**
-- Apps that were in the **bottom half** of a chart's depth (e.g. ranks 51–100 for depth 100) at the start of the period and are now in the **top half**.
-- Their rank must also improve in **at least 60% of the steps** between consecutive VALID readings in the period (steady, not one jump), with at least 4 readings.
-- These are often new kinds of apps before anyone notices.
+`FeatureBuilder` is **pure** (rows in, `AppFeatures` out). A `FeatureSource` interface hides where the rows come from:
+- `LiveFeatureSource`: set-based SQL at read time (today's `RadarRepository` queries);
+- `StoredFeatureSource`: reads `radar_app_feature_day` (§6).
 
-**3. Emerging words.** New vocabulary.
-- **The words:** taken from the name and the summary/subtitle of apps **first seen within the period**, compared with apps first seen in the 60 days before.
-- **A word is flagged when all of these hold:**
-    - it appears in **≥ 3 new apps** from **≥ 2 different developers**;
-    - it appeared in **≤ 1 app** in the baseline;
-    - it is not a stop word and not part of a known theme (when "Hide known themes" is on).
-- **Each word row shows:**
-    - the word;
-    - the number of new apps and developers;
-    - its first appearance;
-    - the apps, as small icons linking to their pages.
-- **Action:** "Save as theme" (see §4).
+Config `apptracker.radar.features: live|stored` (`RADAR_FEATURES`), default `live`. Both give the same results (tested).
 
-**4. Possible new niches.** Clusters.
-- **What a cluster is:**
-    - one **originator**: the app with that word, or a similar name, that was seen first;
-    - its **followers**: other apps from **other developers**, first seen after the originator, within the period plus 30 days.
-- **Similar name:** shares a rare word (an emerging word, or a word used by ≤ 2 apps overall), or the normalised names are close (Jaro-Winkler ≥ 0.9 after removing stop words).
-- **When a cluster shows:** only with **at least 2 followers**. The rule of thumb is "one app is a hit; the copies make the niche".
-- **Each cluster card shows:**
-    - the originator and its rank history as a sparkline;
-    - the followers;
-    - the total rank gained;
-    - the combined rating growth;
-    - the number of countries it ranks in.
+### Signals
+One class per signal:
 
-**5. Seen abroad, not here yet.**
-- **Who appears:** apps (and emerging words) ranked in the **Top 25** of a tracked chart in **another enabled country**, in a category also tracked in the selected country, that have **never ranked** in the selected country.
-- **Each row shows:** the app, where it ranks and since when, and the countries it ranks in.
-- **When only one country is enabled:** show an empty state that explains how to enable more (link to Settings → Countries) and mentions `collector/db/activate-us.sql`.
+```java
+interface RadarSignal {
+  String id();                         // e.g. "RATINGS_GROWING"
+  int defaultPoints();
+  List<ParamSpec> params();            // name, type (INT | PERCENT | DAYS | RATIO), default, min, max
+  Optional<Hit> evaluate(AppFeatures f, SignalContext ctx, Map<String, Number> params);
+}
+record Hit(Map<String, Number> evidence) // numbers only, e.g. {percent: 42, ratings: 130, days: 7}
+```
 
-### On every app row
-- A link to the app page.
-- A **Dismiss** button (hide from the Radar; reversible from "Show dismissed").
-- If Milestone 9 is built, the existing `FollowButton`. Don't build follow logic here.
+- Spring beans collected into a `SignalRegistry` (a `List<RadarSignal>`), ordered by id.
+- `SignalContext` carries what needs the whole scope: the ratings-growth percentile, cluster originators, known themes.
+- Points come from the rules (§4), not from the class; the class only gives the default.
+- **Adding a signal = one class + its i18n keys** (`radar.signal.<ID>.label`, `.hint`, `.evidence`, and one key per param). No other change: the rules editor, the report and the chips are generated from the registry.
 
-### States
-- **Loading:** skeletons.
-- **Empty, per section:** explain what would make the section fill up, e.g. "Not enough history yet: the Radar needs about 2 weeks of collection".
-- **Errors:** the existing `ErrorState`.
+| Signal | Hit when (BALANCED defaults) | Params | Points | Evidence |
+|---|---|---|---|---|
+| `NEW_APP` | released ≤ 90 days ago | `maxAgeDays` 90 | 2 | `days` |
+| `NEW_IN_CHARTS` | first appearance in the scope within the period, after the warm-up, reached the body | — | 2 | `days` (since first appearance) |
+| `CLIMBING` | gained ≥ 10 places, or bottom half → top half; ends in the body | `minPlaces` 10 | 2 | `places`, `from`, `to` |
+| `STEADY` | rank improved in ≥ 60% of the steps, ≥ 4 readings | `minUpPercent` 60, `minReadings` 4 | 1 | `percent`, `readings` |
+| `RATINGS_GROWING` | ratings +≥ 30% and +≥ 20 over 7 days (needs 2 daily rows) | `minPercent` 30, `minRatings` 20, `days` 7 | 2 | `percent`, `ratings`, `days` |
+| `RATINGS_FAST` | rating growth in the top 10% of ranked apps in the scope | `topPercent` 10 | 1 | `percentile` |
+| `UNKNOWN_THEME` | name/summary matches no active theme | — | 2 | — |
+| `HAS_FOLLOWERS` | originator of a cluster with ≥ 2 followers | `minFollowers` 2 | 3 | `followers` |
+| `MULTI_COUNTRY` | ranks in ≥ 2 enabled countries | `minCountries` 2 | 1 | `countries` |
+| `NEW_DEVELOPER` | the developer's first app in the scope, after the warm-up | — | 1 | — |
 
-## 3. Radar score and reasons (pure functions, unit tested)
+### Views (the page sections)
+`RadarViews` defines, in one place, each section as a filter + sort over the scored results:
 
-Each candidate app gets **reasons**, and a score that is simply the sum of their points. Points are constants in one place, so they are easy to tune later.
-
-| Reason (chip) | Condition | Points |
+| View | Filter | Sort |
 |---|---|---|
-| `NEW_APP` | released ≤ 90 days ago | 2 |
-| `NEW_IN_CHARTS` | first seen by the tracker within the period | 2 |
-| `CLIMBING` | gained ≥ 10 places over the period (or bottom → top half) | 2 |
-| `STEADY` | rank improved in ≥ 60% of the steps in the period (≥ 4 readings) | 1 |
-| `RATINGS_GROWING` | rating count +≥ 30% over 7 days and +≥ 20 ratings | 2 |
-| `RATINGS_FAST` | rating growth in the top 10% of ranked apps in the scope | 1 |
-| `UNKNOWN_THEME` | name/summary matches no known theme | 2 |
-| `HAS_FOLLOWERS` | is the originator of a cluster with ≥ 2 followers | 3 |
-| `MULTI_COUNTRY` | ranks in ≥ 2 enabled countries | 1 |
-| `NEW_DEVELOPER` | developer's first app seen by the tracker | 1 |
+| `newcomers` | `NEW_IN_CHARTS` or `NEW_APP` hit, ranked now | score, places gained, best rank |
+| `risingFromBottom` | bottom half at period start, top half now, `STEADY` hit | score, places gained |
+| `emergingWords` | `EmergingWords` over the words of new apps vs the baseline | new apps, developers |
+| `clusters` | `Clusters` (originator + followers, `HAS_FOLLOWERS`' `minFollowers`) | followers, places gained |
+| `abroad` / `abroadWords` | `AbroadNotHere` | best rank abroad |
 
-**Rules:**
-- Hide apps with score < 4 by default; a "Show all" link reveals them.
-- **Ignore readings flagged as gaps** (after outages), and only use VALID snapshots.
-- **Ratings growth** needs at least 2 daily rows. Without them, the reason simply doesn't apply (no error).
+Apps below `minScore` are left out of app sections (`hiddenByScore` counts them; "Show all" = `minScore=0`).
 
-## 4. Themes (known niches)
+## 4. Dynamic rules
 
-"Unknown theme" needs a list of known themes.
+Stored in `setting`, key **`radar_rules`** (JSON), read through `RadarRulesStore` (like `manage/RulesStore`, cached 15 s). A missing row means the BALANCED defaults in code.
 
-- **The list:** themes are a name plus keywords, managed in a **Themes** tab on the Radar page itself. **Do not add it to Settings.**
-- **Seed themes:**
-    - Tongits (`tongits`)
-    - Pusoy (`pusoy`, `pusoy dos`)
-    - Slots (`slot`, `slots`)
-    - Bingo (`bingo`)
-    - Poker (`poker`, `texas`, `holdem`)
-    - Mahjong (`mahjong`)
-    - Sabong (`sabong`)
-    - Ludo (`ludo`)
-    - Domino (`domino`, `dominoes`)
-    - Chess (`chess`)
-    - Solitaire (`solitaire`)
-    - Lucky 9 (`lucky 9`, `lucky nine`)
-    - Sakla (`sakla`)
-    - Color game (`color game`, `perya`)
-- **"Save as theme"** from an emerging word creates a theme with that word. The word then disappears from "Emerging words" when "Hide known themes" is on.
-- **Themes are switched off, never deleted.**
+```json
+{
+  "preset": "BALANCED",
+  "minScore": 4,
+  "signals": { "RATINGS_GROWING": { "enabled": true, "points": 2, "params": { "minPercent": 30, "minRatings": 20, "days": 7 } } },
+  "general":  { "warmUpHours": 48, "bodyPercent": 75, "newAppDays": 90 },
+  "words":    { "baselineDays": 60, "minApps": 3, "minDevelopers": 2, "baselineMax": 1,
+                "stopWords": { "en": [...], "tl": [...], "generic": [...] } },
+  "clusters": { "rareMaxApps": 2, "nameSimilarity": 0.9, "followerExtraDays": 30 },
+  "abroad":   { "topN": 25, "wordMinApps": 3 }
+}
+```
 
-### Words and stop words (pure helper, unit tested)
-- **Lowercase**, remove accents, split on anything that isn't a letter or digit. Use a Unicode-aware split, because names can be Filipino, English, Arabic or other scripts.
-- **Drop:** words of 2 characters or fewer, pure numbers and years.
-- **Stop words:** English and Filipino/Tagalog, plus generic app words: `game`, `games`, `online`, `offline`, `free`, `pro`, `plus`, `app`, `new`, `best`, `real`, `classic`, `card`, `casino`, `ng`, `sa`, `ang`, `mga`, `laro`…
-    - Keep the list in one file.
-    - Category names are stop words too: a word that is just the category isn't news.
-- **Plurals:** treat `slot`/`slots` as one word with simple `s` stemming. Nothing more clever.
+- **Defaults in code**; stop-word defaults come from `resources/radar/stopwords.txt` (sections per language). A missing key falls back to its default.
+- **Validation** against each signal's `ParamSpec` and fixed limits for the other blocks (points 0–10, `minScore` 0–30, percents 0–100, `nameSimilarity` 0.5–1, word lists ≤ 2000 words): 400 with `{"errors": {"signals.CLIMBING.params.minPlaces": "..."}}`.
+- **Presets** (defined in code; choosing one replaces the signals and thresholds, stop words kept):
 
-## 5. Technical design
+| | STRICT | BALANCED (default) | SENSITIVE |
+|---|---|---|---|
+| `minScore` | 5 | 4 | 3 |
+| `CLIMBING.minPlaces` | 15 | 10 | 5 |
+| `STEADY.minUpPercent` | 70 | 60 | 50 |
+| `RATINGS_GROWING` | 50% / 50 | 30% / 20 | 20% / 10 |
+| `HAS_FOLLOWERS.minFollowers` | 3 | 2 | 1 |
+| `words.minApps` / `minDevelopers` | 4 / 3 | 3 / 2 | 2 / 2 |
 
-### Schema: `backend/db/radar.sql` (plain SQL run by the admin, like `management.sql`; there is no Flyway)
-Make it **safe to run again**: `CREATE TABLE IF NOT EXISTS`, seed with `ON CONFLICT (name) DO NOTHING`, grants repeated harmlessly.
+  Any edit away from a preset's values saves as **CUSTOM**. **"Reset to defaults"** writes BALANCED.
+- `GET /api/radar?preset=SENSITIVE` previews a preset without saving it.
+- **Themes, stop words and similarity thresholds are data, not code** (themes in `radar_theme`, the rest in `radar_rules`).
+- **`rulesVersion`**: the first 12 hex characters of the SHA-256 of the canonical rules JSON plus the active themes. Every response includes it.
+- Scoring **always runs at read time**, so rule changes apply immediately, also to stored measurements.
+
+## 5. Explainability
+
+- Every app row has `score` and `reasons[] = {id, points, evidence{...}}`, sorted by points then id.
+- The backend **never sends sentences**. The frontend phrases evidence in English and Arabic from `radar.signal.<ID>.evidence` (e.g. "+42% ratings in 7 days"), with Arabic plurals.
+- Each row shows the chips; a tooltip/popover gives the breakdown (points per reason, total, `minScore`).
+
+## 6. Efficiency
+
+- **Cache** keyed on (parameters + the latest VALID snapshot id in the scope + `rulesVersion` + feedback version). One cheap query gets the snapshot id; a new reading, a rule change or a feedback change gives a new key. This replaces the fixed 10-minute cache. Bounded size (oldest entries dropped).
+- **`radar_app_words`**: an app's words, recomputed only when its listing version (or the stop words) changes.
+- **`radar_word_day(word, country, day, new_apps, developers)`**: daily counts of apps first appearing that day, updated incrementally. Emerging words = sums over two date ranges (period vs baseline). Developer counts per range come from `radar_app_words` joined with first appearances (a sum of daily distinct counts would over-count).
+- **`radar_app_feature_day`**: measurements per app × country × scope × day, written for the charts that have newly processed snapshots.
+- **`RadarIndexJob`** (in the radar package; `EventProcessor` is not changed): runs every minute after the event processor, finds snapshots processed since its cursor (`setting` key `radar_index_cursor`), and updates the three tables for those charts only, then records the daily scores (§7). Switch: `apptracker.radar.index-enabled` (`RADAR_INDEX_ENABLED`, default true). The tables can be rebuilt from snapshots; `POST /api/radar/actions/reindex` (admin) rebuilds them.
+
+## 7. Feedback and history
+
+- **Feedback** on an app, a word or a cluster (keyed by its originator):
+    - **Dismiss** with a reason: `NOT_A_NICHE`, `ALREADY_KNOWN`, `AD_SPIKE`, `DUPLICATE`, `OTHER` (optional note). Hidden from the Radar; reversible from "Show dismissed".
+    - **Confirm as niche**; on a word or cluster it can also save a theme (`saveTheme: true`).
+    - One row per target; changing it updates the row; undoing switches it off. Never deleted.
+- **`radar_score_day`**: the daily score and reasons (with evidence) of each flagged app, per country and scope "all categories", default period, rules in force (`rules_version` stored). It gives:
+    - "first flagged on";
+    - a score sparkline (`GET /api/radar/history`);
+    - "new on the Radar since your last visit": the frontend keeps the last visit per country in localStorage (like other preferences) and compares it with `firstFlaggedAt`.
+- **Signal report** (`GET /api/radar/report?window=30d|90d`): per signal, apps hit (distinct, from `radar_score_day`), confirmed, and dismissed by reason. Shown in the **Signals** tab.
+
+## 8. Saved views
+
+- `radar_view`: name, filters (country, genre, window, hideKnown, showDismissed, minScore), preset, active.
+- One click opens a view (`?view=<id>` on the page and the API). Switched off, never deleted.
+- Kept ready for future Radar alerts (M9), but **no alerts are built**.
+
+## 9. Technical design
+
+### Schema: `backend/db/radar.sql` (plain SQL run by the admin; no Flyway; safe to re-run)
 
 ```
-radar_theme
-  id          bigint identity PK
-  name        text NOT NULL UNIQUE
-  keywords    text[] NOT NULL
-  active      boolean NOT NULL DEFAULT true
-  created_at, updated_at timestamptz
-
-radar_dismissal
-  app_id      bigint PK REFERENCES app(id)
-  active      boolean NOT NULL DEFAULT true   -- "undismiss" sets false
-  created_at, updated_at timestamptz
+radar_theme            id, name UNIQUE, keywords text[], active, created_at, updated_at      (v1, kept; 14 seeds)
+radar_feedback         id, target_kind APP|WORD|CLUSTER, app_id NULL REFERENCES app, word NULL,
+                       action DISMISS|CONFIRM, reason NULL (DISMISS only), note NULL, active,
+                       created_at, updated_at;  UNIQUE NULLS NOT DISTINCT (target_kind, app_id, word)
+radar_app_words        app_id PK, listing_version_id, words text[], updated_at
+radar_word_day         word, country, day, new_apps, developers;  PK (word, country, day)
+radar_app_feature_day  app_id, country, genre_id (0 = all), day, features jsonb, updated_at;
+                       PK (app_id, country, genre_id, day)
+radar_score_day        app_id, country, day, score, reasons jsonb, rules_version;  PK (app_id, country, day)
+radar_view             id, name UNIQUE, filters jsonb, preset, active, created_at, updated_at
 ```
-- **Seed** the themes from §4.
-- **Grants:** `app_backend` gets `SELECT, INSERT, UPDATE` on both tables and the sequence. **No `DELETE`.**
-- **Where it runs:** add `radar.sql` to the list of scripts in `DEPLOY.md` (section 8) and section 8 of this file, after `management.sql`.
+- **`radar_dismissal`** (v1) is kept, not dropped; its active rows are copied once into `radar_feedback` as `DISMISS` / `OTHER` (`ON CONFLICT DO NOTHING`). The code stops using it.
+- **Grants:** if `app_backend` exists: `SELECT, INSERT, UPDATE` on all radar tables and `USAGE` on their sequences. **No `DELETE`.** If `app_collector` exists: `SELECT`.
+- Listed in `DEPLOY.md` (section 8) and section 8 of this file, after `management.sql` and `watchlist.sql`.
 
-### Backend (package `com.apptracker.radar`, read-mostly)
-- **`RadarRepository`:** NamedParameterJdbcTemplate.
-    - Candidates: apps ranked in the scope's active charts within the period, with their first/last ranks, reading counts, `release_date`, `first_seen_at`, developer, latest name/summary, and rating counts at the start and end (`app_rating_daily`).
-    - Keep it to a few set-based queries, not one per app.
-- **Pure helpers, unit tested:**
-    - `Words` (tokenise, stop words, stemming);
-    - `RadarScorer` (reasons and score);
-    - `EmergingWords`;
-    - `Clusters` (originator, followers, Jaro-Winkler);
-    - `AbroadNotHere`.
-- **`RadarService`:**
-    - Computes the whole Radar for (country, scope, period) **at read time**, like M9's alerts.
-    - Caches the result for 10 minutes per parameter set (a simple in-memory map with timestamps is enough).
-    - The data changes at most hourly, and the volume is small: hundreds of apps.
-- **`RadarController`:**
+### Backend (package `com.apptracker.radar`)
+- Features: `AppFeatures`, `FeatureBuilder` (pure), `FeatureSource`, `LiveFeatureSource`, `StoredFeatureSource`.
+- Signals: `RadarSignal`, `ParamSpec`, `SignalContext`, `SignalRegistry`, one class per signal in `radar.signal`.
+- Rules: `RadarRules`, `RadarPresets`, `RadarRulesStore`, validation in `RadarRulesValidator`.
+- Pure helpers (v1, kept, now taking their thresholds from the rules): `Words`, `KnownThemes`, `EmergingWords`, `Clusters`, `AbroadNotHere`.
+- `RadarViews`, `RadarService` (assembles, caches), `RadarIndexJob`, `RadarRepository`, `RadarController`.
 
-| Endpoint | Returns / does |
+| Endpoint | Does |
 |---|---|
-| `GET /api/radar?country=ph&genre=&window=14d&hideKnown=true&showDismissed=false&minScore=4` | `{newcomers[], risingFromBottom[], emergingWords[], clusters[], abroad[], dataSince, notes[]}`. Rows reuse the existing `AppCard`; each row has `reasons[]`, `score`, and the numbers shown in §2 |
-| `GET /api/radar/themes` · `POST` · `PUT /api/radar/themes/{id}` | Themes: list, create `{name, keywords}`, change `{name?, keywords?, active?}` |
-| `POST /api/radar/dismiss` `{appleAppId, active}` | Dismiss / undismiss |
+| `GET /api/radar?country=ph&genre=&window=4d&hideKnown=true&showDismissed=false&minScore=&view=&preset=` | `{newcomers[], risingFromBottom[], emergingWords[], clusters[], abroad[], abroadWords[], dataSince, notes[], rulesVersion, preset, hiddenByScore}`. App rows: `AppCard`, numbers, `score`, `reasons[]`, `feedback`, `firstFlaggedAt` |
+| `GET /api/radar/signals` | The registry: ids, default points, param specs |
+| `GET` / `PUT /api/radar/rules` | Rules in force; save (400 on errors); `PUT {preset: "BALANCED"}` resets |
+| `GET` · `POST` · `PUT /api/radar/themes/{id}` | Themes (v1) |
+| `POST /api/radar/feedback` | `{appleAppId? \| word? \| clusterOf?, action, reason?, note?, active, saveTheme?}` |
+| `GET /api/radar/history?appleAppId=&country=` | Daily score and reasons, first flagged date |
+| `GET /api/radar/report?country=&window=30d` | Per signal: hits, confirmed, dismissed by reason |
+| `GET` · `POST` · `PUT /api/radar/views/{id}` | Saved views |
+| `POST /api/radar/actions/reindex` | Rebuild the words, features and score tables |
 
-- **Validation:** 400 with field errors, as in `/api/manage`.
-- **Protection:** like Settings. Add `/api/radar/**` to the admin-key interceptor for **non-GET methods only**; `GET` stays open.
-- **`dataSince`:** the first VALID snapshot in the scope. The frontend uses it to say "not enough history yet" when it is less than 7 days ago.
+- `POST /api/radar/dismiss` (v1) stays as an alias of a `DISMISS`/`OTHER` feedback, for the deployed v1 frontend.
+- **Protection:** `/api/radar/**` non-GET need `X-Admin-Key` when `ADMIN_KEY` is set (already in WebConfig). GET stays open.
+- **Validation:** 400 with field errors, as in `/api/manage`; 404 unknown ids; 409 duplicate names.
 
 ### Frontend
-- **API layer:** `api/radarApi.ts` + `api/radarTypes.ts`. Reads are merged into `trackerApi`; writes go through the existing `useMutation`/`manageSaga` mechanism, with `INVALIDATES` entries. Only `src/api/*` knows URLs.
-- **Domain:** `domain/radar.ts` holds the reason-chip definitions (label key, tone, order), the "not enough history" rule and the sorting. Unit-test it.
-- **Components:**
-    - `ReasonChips`;
-    - `RadarAppRow` (reuses `AppLabel`, `Sparkline`, `RankDelta`);
-    - `WordRow`;
-    - `ClusterCard`;
-    - `ThemeEditor`, for the Themes tab: list with switches, add a theme, edit keywords as chips.
-- **Page:** `pages/RadarPage.tsx`, a lazy route; it has two tabs, Radar and Themes.
-- **i18n:**
-    - Every text in `en.json` **and** `ar.json`, with full Arabic plurals: "N new apps", "N developers", "N followers", "N countries", ages in days.
-    - Words and app names keep `dir="auto"`.
-- **Fake API:** extend `mock/` with a plausible `/api/radar` response built from the existing fixtures, plus an in-memory fake of themes and dismissals, so `npm run dev:mock` shows every section filled. Include at least one cluster, one emerging word, and the "abroad" empty state.
+- `/radar` with tabs **Radar**, **Themes**, **Rules**, **Signals** (`?tab=`).
+- **Rules tab:** generated from `/api/radar/signals` + `/api/radar/rules`: preset picker, per signal on/off, points and params (limits from the spec), the other blocks, stop words per language as chips, "Reset to defaults". A new signal needs only translations.
+- **Radar tab:** v1 sections, plus a score breakdown on every row (chips + popover), "new since last visit" badge, "first flagged" date, history sparkline, dismiss with reason (small menu), confirm, saved views (select + "Save view").
+- **Signals tab:** the report table, 30D / 90D.
+- Patterns: reads via `useResource`; writes via `useMutation` / `manageSaga` with `INVALIDATES`; URLs only in `src/api/radarApi.ts`; pure logic in `domain/radar.ts` (evidence formatting, rules form validation mirroring the backend, preset diffing, "new since last visit"); reuse `Panel`, `SegmentedControl`, `Switch`, `Field`, `Notice`, `Sparkline`, `RankDelta`.
+- Every text in `en.json` and `ar.json`, full Arabic plurals; `dir="auto"` on words and app names.
+- `mock/` extended so `npm run dev:mock` fills every tab.
 
-### Tests (owner's rule: light, unit tests and migration tests only)
-- **Backend:**
-    - `WordsTest`: tokenising, stop words, `s` stemming, non-Latin names.
-    - `RadarScorerTest`: each reason, thresholds, missing ratings, a 12-hour interval.
-    - `EmergingWordsTest`: ≥ 3 apps / ≥ 2 developers / baseline ≤ 1, and the known-theme filter.
-    - `ClustersTest`: originator order, followers from other developers only, the minimum of 2 followers.
-- **Migration test** for `radar.sql`:
-    - running it twice works;
-    - the seed themes are present;
-    - the backend role can insert and update but **not delete**.
-- **Frontend:** `domain/radar.test.ts`; the i18n key test must still pass.
+### Tests (owner's rule: light, unit tests + migration tests only)
+- Backend: each signal (params, evidence, off by params), `FeatureBuilder`, `Words`, `EmergingWords`, `Clusters`, `AbroadNotHere`, presets and rules validation; live and stored sources giving the same scores on one fixture.
+- Migration: `radar.sql` runs twice; seeds present; the `radar_dismissal` copy; the backend role can insert and update, not delete.
+- Frontend: `domain/radar.test.ts`; the i18n key test passes.
 
-## 6. Build order (stop for review after each)
+## 10. What changes from v1
 
-1. **Backend + `radar.sql`:** helpers and tests first, then the repository, service and endpoints. Check the endpoint against the real database: numbers make sense, response time under 1 s.
-2. **Frontend:** the Radar tab (five sections), the Themes tab, the fake API, both languages.
+- **Kept:** `radar_theme`, the Themes tab, `Words`, `KnownThemes`, `EmergingWords`, `Clusters`, `AbroadNotHere`, the warm-up and body rules, the SQL of `RadarRepository` (moves into `LiveFeatureSource`), the period picker, the section components.
+- **Replaced:** `RadarScorer` + `Reason` enum → signal classes + registry; reasons as strings → `{id, points, evidence}`; fixed constants → `radar_rules`; 10-minute cache → keyed cache; `radar_dismissal` → `radar_feedback`; dismiss button → dismiss with reason + confirm.
+- **New:** features layer, stored features, words tables, score history, report, saved views, Rules and Signals tabs.
+- **Deploy together:** the v2 response changes `reasons[]`, so deploy backend and frontend together (after step 3), after running the new `radar.sql`.
 
-When done, update the READMEs (endpoint tables, screens), `DEPLOY.md` (the script list) and this file (sections 3, 5, 7, 8 and 10).
+## 11. Build order (stop for review after each)
 
-## 7. Out of scope for v1
+1. **Spec update + plan.**
+2. **Backend core:** features layer, registry and signals, rules store + presets + validation, live source, keyed cache, endpoints for radar / signals / rules / themes / feedback; `radar.sql`. Check against the real database (sensible numbers, under 1 s).
+3. **Frontend:** Radar, Themes and Rules tabs, score breakdown, feedback, both languages, mock.
+4. **Efficiency + history:** words tables, stored features (live by default), index job, score history, signal report + Signals tab, saved views.
+
+When done, update the READMEs, `DEPLOY.md` and this file (sections 3, 5, 7, 8, 10).
+
+## 12. Out of scope
 
 Do not build these; they are noted here for later:
 - external signals (Google Trends, social, ad libraries);
 - Apple keyword search to measure supply;
 - review-text analysis;
-- radar alerts (they could plug into M9's alert rules later).
+- Radar alerts (saved views are ready for M9's alert rules later).
